@@ -498,9 +498,26 @@ async function expectWelcomeComposerBannerCompletesAfterPersonaMention(
   await expect(banner).toHaveAttribute("data-state", "prompt");
   expect(await sentRecipients()).toEqual([]);
 
+  // Baseline regression restored from the fixed root: a manually typed
+  // colliding name must fail visibly, keep the draft, and publish nothing.
+  // The production fix for that visible failure is the independent composer
+  // recovery work; until it lands, this sequence is expected to fail on the
+  // fixed root.
+  await input.fill(content);
+  await input.press("Escape");
+  await page.getByTestId("send-message").click();
+  await expect(
+    page.getByText("The mention @Fizz is ambiguous.", { exact: false }),
+  ).toBeVisible();
+  await expect(input).toHaveText(content);
+  await expect(banner).toHaveAttribute("data-state", "prompt");
+  expect(await sentRecipients()).toEqual([]);
+
   // This freshness prefix retains both colliding starters in the roster and
-  // selects the exact current starter. Ambiguous-send error/draft recovery is
-  // owned by the independent composer recovery PR, not directory freshness.
+  // selects the exact current starter. Make selection intent explicit; do
+  // not remove the colliding fixture or relax extraction. The resulting event
+  // must tag only our starter identity.
+  await input.fill("");
   await input.fill(content);
   await page.getByTestId(`mention-suggestion-${fizz[0].pubkey}`).click();
   await page.getByTestId("send-message").click();
