@@ -14,11 +14,12 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:nostr/nostr.dart' as nostr;
 
 import '../../helpers/widget_helpers.dart';
 
 const _agent =
-    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798';
 const _owner =
     'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const _peer =
@@ -69,7 +70,18 @@ void main() {
       findsNWidgets(2),
     );
     expect(find.text('Agent'), findsOneWidget);
-    cache.put(const UserProfile(pubkey: _agent, displayName: 'Agent'));
+    // Revocation is signed relay evidence, not a seed-only cache update.
+    cache.cacheProfileEvent(
+      NostrEvent.fromJson(
+        nostr.Event.from(
+          kind: 0,
+          content: '{"name":"Agent"}',
+          secretKey:
+              '0000000000000000000000000000000000000000000000000000000000000001',
+          createdAt: 2,
+        ).toMap(),
+      ),
+    );
     await tester.pump();
     expect(
       find.byIcon(LucideIcons.cloud),
