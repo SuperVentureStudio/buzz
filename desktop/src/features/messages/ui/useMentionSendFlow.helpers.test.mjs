@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { AgentMentionAuthorizationError } from "../lib/agentMentionRevalidation.ts";
 
 import {
   formatMessageSendError,
@@ -60,4 +61,9 @@ test("revalidation carries captured and prepared agent keys independently of the
       intendedAgentPubkeys: ["a".repeat(64), "b".repeat(64), "c".repeat(64)],
     },
   );
+});
+
+test("formatMessageSendError preserves the existing authorization message", () => {
+  const error = new AgentMentionAuthorizationError();
+  assert.equal(formatMessageSendError(error), error.message);
 });
