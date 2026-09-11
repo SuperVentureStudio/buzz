@@ -657,7 +657,7 @@
     var(--sidebar-background) /
     var(--glass-background-opacity, 65%)
   );
-  --buzz-translucency-gradient-alpha: var(--glass-background-opacity, 65%);
+  --buzz-translucency-gradient-alpha: var(--glass-tint-opacity, 18%);
   --buzz-translucency-wash-alpha: 2.4%;
 }
 

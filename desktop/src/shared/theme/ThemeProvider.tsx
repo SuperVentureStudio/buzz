@@ -331,11 +331,21 @@ function readStoredGlassOpacity(): number {
     : clampGlassOpacity(Number(stored));
 }
 
+/** Map the control's readable 30–90 range to a genuinely translucent tint. */
+export function getGlassTintOpacity(value: number): number {
+  return Math.round(clampGlassOpacity(value) * 0.28);
+}
+
 /** Set the tint opacity layered above native blur; lower values reveal more. */
 function applyGlassOpacity(value: number) {
+  const opacity = clampGlassOpacity(value);
   document.documentElement.style.setProperty(
     "--glass-background-opacity",
-    `${clampGlassOpacity(value)}%`,
+    `${opacity}%`,
+  );
+  document.documentElement.style.setProperty(
+    "--glass-tint-opacity",
+    `${getGlassTintOpacity(opacity)}%`,
   );
 }
 
