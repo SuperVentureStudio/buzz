@@ -42,6 +42,7 @@ type ManagedAgentSessionPanelProps = {
   agent: Pick<ManagedAgent, "pubkey" | "name"> & {
     status: ManagedAgent["status"] | "unknown";
     avatarUrl?: string | null;
+    externallyManaged?: boolean;
   };
   autoTail?: boolean;
   channelId?: string | null;
@@ -76,7 +77,10 @@ export function ManagedAgentSessionPanel({
   rawEventsOverride,
   transcriptOverride,
 }: ManagedAgentSessionPanelProps) {
-  const hasObserver = agent.status === "running" || agent.status === "deployed";
+  const hasObserver =
+    agent.status === "running" ||
+    agent.status === "deployed" ||
+    agent.externallyManaged === true;
   // Always read from the store — archived frames are ingested regardless of
   // live status and must be renderable for idle agents with channel history.
   // The `hasObserver` flag still gates the relay subscription (via the
@@ -195,7 +199,7 @@ function SessionHeader({
             ? latestSessionId
               ? `Session ${shorten(latestSessionId)}`
               : "Waiting for the next agent turn."
-            : "Restart this local agent to attach the observer feed."}
+            : "Start this local agent to attach the observer feed."}
         </p>
       </div>
       <Badge className="w-fit font-mono" variant="outline">

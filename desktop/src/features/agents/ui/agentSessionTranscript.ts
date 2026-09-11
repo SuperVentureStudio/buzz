@@ -171,6 +171,18 @@ function stringifyPayload(value: unknown) {
   }
 }
 
+function isSvsObserverPayload(payload: unknown) {
+  return asString(asRecord(payload).source) === "svs";
+}
+
+function describeSvsTurnCompletion(payload: unknown) {
+  const tools = asRecord(payload).tools;
+  const toolCount = Array.isArray(tools) ? tools.length : 0;
+  return toolCount > 0
+    ? `SVS runtime · ${toolCount} tool${toolCount === 1 ? "" : "s"} used`
+    : "SVS runtime";
+}
+
 function describePermissionRequest(payload: Record<string, unknown>) {
   const params = asRecord(payload.params);
   const title =
@@ -741,8 +753,24 @@ export function processTranscriptEvent(
       d,
       `turn:${ch}:${event.turnId ?? event.seq}`,
       "lifecycle",
-      "Turn started",
-      describeTurnStarted(event.payload),
+      isSvsObserverPayload(event.payload) ? "Maya is working" : "Turn started",
+      isSvsObserverPayload(event.payload)
+        ? "SVS runtime"
+        : describeTurnStarted(event.payload),
+      event.timestamp,
+      ctx,
+      event.kind,
+    );
+  } else if (
+    event.kind === "turn_completed" &&
+    isSvsObserverPayload(event.payload)
+  ) {
+    upsertTextItem(
+      d,
+      `turn-completed:${ch}:${event.turnId ?? event.seq}`,
+      "lifecycle",
+      "Response completed",
+      describeSvsTurnCompletion(event.payload),
       event.timestamp,
       ctx,
       event.kind,
@@ -780,7 +808,7 @@ export function processTranscriptEvent(
       d,
       `${event.kind}:${ch}:${event.turnId ?? event.seq}`,
       "lifecycle",
-      title,
+      isSvsObserverPayload(event.payload) ? "Response failed" : title,
       `${outcome}: ${displayError}`,
       event.timestamp,
       ctx,

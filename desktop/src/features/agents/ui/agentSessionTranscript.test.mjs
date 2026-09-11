@@ -42,6 +42,47 @@ function activityTitle(item) {
   return formatToolTitle(item.buzzToolName ?? item.toolName, item.title);
 }
 
+test("buildTranscript renders SVS turn lifecycle as clear status rows", () => {
+  const transcript = buildTranscript([
+    {
+      ...baseEvent,
+      kind: "turn_started",
+      payload: { source: "svs" },
+    },
+    {
+      ...baseEvent,
+      seq: 2,
+      kind: "turn_completed",
+      payload: {
+        source: "svs",
+        state: "answered",
+        tools: ["read_asset", "memory_read", "run_tool"],
+      },
+    },
+  ]);
+
+  assert.deepEqual(
+    transcript.map((item) => [item.type, item.title, item.text]),
+    [
+      ["lifecycle", "Maya is working", "SVS runtime"],
+      ["lifecycle", "Response completed", "SVS runtime · 3 tools used"],
+    ],
+  );
+});
+
+test("buildTranscript labels an SVS failed response clearly", () => {
+  const [item] = buildTranscript([
+    {
+      ...baseEvent,
+      kind: "turn_error",
+      payload: { source: "svs", outcome: "failed", error: "Timed out" },
+    },
+  ]);
+
+  assert.equal(item.title, "Response failed");
+  assert.equal(item.text, "failed: Timed out");
+});
+
 // --- stub-overflow vanish (pins the pre-existing degraded-frame behavior) ---
 
 test("buildTranscript drops a session/prompt turn whose frame was stubbed by the size trimmer", () => {
