@@ -15,7 +15,7 @@ const update = [
   "- BuildOnce is uninstrumented: missing brevo_list_ids",
   "- 2 more in SVS.",
   "",
-  "**Waiting on your OK:** 3 approvals. Oldest: Q3 review gate (75d).",
+  "**Waiting on your OK:** 3 approvals. Oldest: Q3 review gate (75d). [Open](http://localhost:5173/operations/work/task/q3)",
   "",
   "**Went wrong**",
   "- Forge repo push failed",
@@ -24,7 +24,7 @@ const update = [
   "",
   "**Weekly review due.** Score the Critical Number and Rocks.",
   "",
-  "Reply to ask me about any of these.",
+  "Reply to ask me about any of these, or [open SVS](http://localhost:5173/attention).",
 ].join("\n");
 
 test("reads the SVS update into sections, labelled lines and a footer", () => {
@@ -52,7 +52,7 @@ test("reads the SVS update into sections, labelled lines and a footer", () => {
     lines: [
       {
         label: "Waiting on your OK",
-        text: "3 approvals. Oldest: Q3 review gate (75d).",
+        text: "3 approvals. Oldest: Q3 review gate (75d). [Open](http://localhost:5173/operations/work/task/q3)",
       },
       {
         label: "Heads-up",
@@ -63,7 +63,8 @@ test("reads the SVS update into sections, labelled lines and a footer", () => {
         text: "Score the Critical Number and Rocks.",
       },
     ],
-    footer: "Reply to ask me about any of these.",
+    footer:
+      "Reply to ask me about any of these, or [open SVS](http://localhost:5173/attention).",
   });
 });
 

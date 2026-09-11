@@ -1,5 +1,33 @@
+import type { ReactNode } from "react";
+
 import type { SvsUpdate } from "@/features/messages/lib/svsUpdateMessage";
 import { cn } from "@/shared/lib/cn";
+
+const LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+
+/** Plain text with its `[label](http…)` links as anchors, opened like any message link. */
+function InlineLinks({ text }: { text: string }) {
+  const parts: ReactNode[] = [];
+  let last = 0;
+  for (const match of text.matchAll(LINK)) {
+    const start = match.index ?? 0;
+    parts.push(text.slice(last, start));
+    parts.push(
+      <a
+        className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
+        href={match[2]}
+        key={start}
+        rel="noreferrer"
+        target="_blank"
+      >
+        {match[1]}
+      </a>,
+    );
+    last = start + match[0].length;
+  }
+  parts.push(text.slice(last));
+  return <>{parts}</>;
+}
 
 /**
  * Maya's SVS update as a read-only card: what to do today and what needs
@@ -40,7 +68,9 @@ export function SvsUpdateCard({ update }: { update: SvsUpdate }) {
                         : "bg-muted-foreground/60",
                     )}
                   />
-                  <span>{item}</span>
+                  <span>
+                    <InlineLinks text={item} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -52,7 +82,9 @@ export function SvsUpdateCard({ update }: { update: SvsUpdate }) {
             {update.lines.map((line) => (
               <div className="contents" key={line.label}>
                 <dt className="text-muted-foreground">{line.label}</dt>
-                <dd>{line.text}</dd>
+                <dd>
+                  <InlineLinks text={line.text} />
+                </dd>
               </div>
             ))}
           </dl>
@@ -61,7 +93,7 @@ export function SvsUpdateCard({ update }: { update: SvsUpdate }) {
 
       {update.footer && (
         <footer className="border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
-          {update.footer}
+          <InlineLinks text={update.footer} />
         </footer>
       )}
     </section>
