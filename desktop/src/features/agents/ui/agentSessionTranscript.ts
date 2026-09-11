@@ -753,7 +753,7 @@ export function processTranscriptEvent(
       d,
       `turn:${ch}:${event.turnId ?? event.seq}`,
       "lifecycle",
-      isSvsObserverPayload(event.payload) ? "Maya is working" : "Turn started",
+      isSvsObserverPayload(event.payload) ? "Working" : "Turn started",
       isSvsObserverPayload(event.payload)
         ? "SVS runtime"
         : describeTurnStarted(event.payload),

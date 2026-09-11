@@ -64,7 +64,7 @@ test("buildTranscript renders SVS turn lifecycle as clear status rows", () => {
   assert.deepEqual(
     transcript.map((item) => [item.type, item.title, item.text]),
     [
-      ["lifecycle", "Maya is working", "SVS runtime"],
+      ["lifecycle", "Working", "SVS runtime"],
       ["lifecycle", "Response completed", "SVS runtime · 3 tools used"],
     ],
   );

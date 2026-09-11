@@ -9,6 +9,7 @@ import {
   Terminal,
   UserRound,
 } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import * as React from "react";
 import { AgentStatusBadge } from "@/features/agents/ui/AgentStatusBadge";
 import { canonicalNpub, truncateNpub } from "@/shared/lib/pubkey";
@@ -52,9 +53,19 @@ export function isSvsManagedAgent(agent: ManagedAgent | undefined) {
   return agent?.envVars?.SVS_MANAGED === "1";
 }
 
+const SVS_WEB_URL = "http://localhost:5173";
+
+export function svsProfileUrl(agent: ManagedAgent | undefined) {
+  const actorId = agent?.envVars?.SVS_ACTOR_ID;
+  return isSvsManagedAgent(agent) && actorId
+    ? `${SVS_WEB_URL}/team/agents/${encodeURIComponent(actorId)}`
+    : null;
+}
+
 const AGENT_INFO_LABELS = new Set([
   "Public key",
   "Managed by",
+  "SVS profile",
   "NIP-05",
   "Agent type",
   "Capabilities",
@@ -289,6 +300,18 @@ export function buildOwnerFields({
           ? () => onOpenProfile?.(ownerProfilePubkey)
           : undefined,
       testId: "user-profile-managed-by",
+    });
+  }
+
+  const svsUrl = svsProfileUrl(managedAgent);
+  if (svsUrl) {
+    fields.push({
+      copyValue: svsUrl,
+      displayValue: "Open in SVS",
+      icon: ArrowUpRight,
+      label: "SVS profile",
+      onClick: () => void openUrl(svsUrl),
+      testId: "user-profile-svs-link",
     });
   }
 
