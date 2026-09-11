@@ -114,3 +114,14 @@ local Start/Stop controls. This is intentionally separate from relay presence:
 the normal green/away/offline indicators describe a Buzz relay session, whereas
 the cyan marker describes SVS ownership and remains visible while no local
 `buzz-acp` process exists. Keep ordinary contacts on the existing presence path.
+
+Add `env_vars.SVS_ACTOR_ID` (for example `actor:maya`) to give the profile an
+"SVS profile · Open in SVS" row that opens the agent's page in the loopback
+SVS web app (`http://localhost:5173/team/agents/<id>`). Without it, no link is
+shown. The observer feed labels SVS turns "Working" rather than naming an
+agent, so a second SVS-managed agent is never shown as Maya.
+
+Buzz is the conversation console; boards, dashboards and the full agent
+directory stay in the SVS web app, per the operating layer's Buzz/dashboard
+split. Add Buzz source changes only for a gap in conversation, and link to the
+web app for anything that is looked up rather than answered.
