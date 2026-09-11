@@ -21,11 +21,16 @@ git push --force-with-lease origin svs
 Resolve and test any rebase conflict on `svs`; never merge `svs` back into
 `main`.
 
-## SVS desktop build
+## SVS desktop builds
 
-The SVS bundle uses `desktop/src-tauri/tauri.svs.conf.json`, which gives it a
-separate app name, bundle identifier, and URL scheme. It can therefore coexist
-with the upstream Buzz app during migration.
+`desktop/src-tauri/tauri.svs.conf.json` is the isolated build: a separate app
+identity and URL scheme for development or a side-by-side test. Its local state
+is separate from the installed Buzz app.
+
+`desktop/src-tauri/tauri.svs.replace.conf.json` is the replacement build. It
+keeps Buzz's production bundle identifier and URL scheme, so macOS resolves the
+same app-data directory and the release build reads the existing
+`buzz-desktop` keychain identity. Use this build to replace the installed app.
 
 The source mark is `desktop/src-tauri/icons/svs-source.png`. Regenerate the
 macOS icon set from that mark before changing any icon sizes. Build the branded
@@ -33,5 +38,5 @@ desktop app with:
 
 ```bash
 cd desktop
-pnpm tauri:build:svs
+pnpm tauri:build:svs:replace
 ```
