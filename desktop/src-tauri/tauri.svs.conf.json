@@ -1,0 +1,11 @@
+{
+  "productName": "SVS Buzz",
+  "identifier": "com.superventurestudio.buzz",
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["svs-buzz"]
+      }
+    }
+  }
+}
