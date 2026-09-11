@@ -7,5 +7,10 @@
         "schemes": ["buzz"]
       }
     }
+  },
+  "bundle": {
+    "macOS": {
+      "infoPlist": "Info.svs.plist"
+    }
   }
 }
