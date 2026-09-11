@@ -40,7 +40,9 @@ import { UserAvatar } from "@/shared/ui/UserAvatar";
 import { useChannelNavigation } from "@/shared/context/ChannelNavigationContext";
 import { parseImetaTags } from "@/shared/ui/markdown/parseImeta";
 import { useMessageEmoji } from "@/features/messages/lib/useMessageEmoji";
+import { parseSvsUpdateMessage } from "@/features/messages/lib/svsUpdateMessage";
 import { parseWaveMessageContent } from "@/features/messages/lib/waveMessage";
+import { SvsUpdateCard } from "@/features/messages/ui/SvsUpdateCard";
 import { resolveSnapshotSharedBy } from "@/features/messages/lib/snapshotSharedBy";
 import { resolveMentionProps } from "@/shared/lib/resolveMentionNames";
 import type { VideoReviewContext } from "@/shared/ui/VideoPlayer";
@@ -415,6 +417,10 @@ export const MessageRow = React.memo(
             />
           );
         default: {
+          const svsUpdate = parseSvsUpdateMessage(message.body);
+          if (svsUpdate) {
+            return <SvsUpdateCard update={svsUpdate} />;
+          }
           const waveMessage = parseWaveMessageContent(message.body);
           if (waveMessage) {
             return (
