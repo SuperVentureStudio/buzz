@@ -33,6 +33,20 @@ same app-data directory and the release build reads the existing
 `buzz-desktop` keychain identity. Its `Info.svs.plist` overlay changes the
 Finder and Dock name to `SVS`. Use this build to replace the installed app.
 
+### Build prerequisites
+
+The replacement build needs Node, pnpm and a current Rust toolchain. On the
+SVS Mac, Homebrew provides Rust and Corepack exposes the repository's pnpm:
+
+```bash
+brew install rust
+corepack enable
+```
+
+The build guard in `desktop/scripts/tauri-command.mjs` rejects missing, empty,
+or non-executable macOS sidecars. Keep the real `*-aarch64-apple-darwin`
+sidecars in `desktop/src-tauri/binaries/`; do not package CI placeholder files.
+
 The source mark is `desktop/src-tauri/icons/svs-source.png`. Regenerate the
 macOS icon set from that mark before changing any icon sizes. Build the branded
 desktop app with:
@@ -41,3 +55,46 @@ desktop app with:
 cd desktop
 pnpm tauri:build:svs:replace
 ```
+
+The bundle is written to
+`desktop/src-tauri/target/release/bundle/macos/SVS.app`. Before installation,
+ad-hoc sign the completed local bundle so its current resources and
+`Info.plist` are sealed:
+
+```bash
+codesign --force --deep --sign - src-tauri/target/release/bundle/macos/SVS.app
+codesign --verify --deep --strict src-tauri/target/release/bundle/macos/SVS.app
+```
+
+To install, quit SVS, move `/Applications/SVS.app` to a dated directory under
+`~/svs/var/backups/buzz/`, copy the verified bundle into `/Applications`, then
+launch it. Moving rather than deleting makes app rollback immediate. Do not
+change the replacement bundle identifier: it is what preserves existing Buzz
+profiles, managed-agent records, relay identity and local data.
+
+## SVS visual system
+
+SVS already has a macOS-only native vibrancy path. `ThemeProvider.tsx` installs
+the native material through `set_window_vibrancy` before making the WebView
+transparent; `theme.css` then keeps the main reading surface solid while the
+outer chrome and sidebar use the glass tint. This ordering prevents a white or
+opaque startup flash in WKWebView.
+
+The user preference is stored as `buzz-glass-background`; tint opacity is
+stored separately and applied through `--glass-background-opacity`. Keep glass
+optional, macOS-specific and contrast-safe. New SVS visual work should change
+the existing theme tokens and the outer chrome only; message content, compose
+surfaces, dialogs and dense operational views remain legible opaque layers.
+
+MonoCode is a useful visual reference, not a dependency: its macOS treatment
+uses a transparent root, a translucent sidebar and a mostly opaque content
+surface, with a user-controlled sidebar opacity. For SVS, reuse that hierarchy
+with the existing cyan brand accent and native vibrancy rather than importing
+MonoCode components, state, or window-management code.
+
+When refining the look, verify all three states on a real macOS desktop:
+
+1. Glass off: no visual or contrast regression.
+2. Glass on with a light wallpaper: readable labels, inputs and selected rows.
+3. Glass on with a dark wallpaper: sidebar separation, modal readability and
+   visible macOS traffic lights.
