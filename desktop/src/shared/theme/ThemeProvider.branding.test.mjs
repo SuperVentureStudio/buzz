@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   getGlassTintOpacity,
+  getGlassContentOpacity,
   isSvsTheme,
   resolveEffectiveAccent,
   SVS_ACCENT,
@@ -33,4 +34,10 @@ test("glass uses a light color tint instead of replaying the full opacity", () =
   assert.equal(getGlassTintOpacity(30), 8);
   assert.equal(getGlassTintOpacity(50), 14);
   assert.equal(getGlassTintOpacity(90), 25);
+});
+
+test("glass keeps workspace panes legible while visibly translucent", () => {
+  assert.equal(getGlassContentOpacity(30), 50);
+  assert.equal(getGlassContentOpacity(50), 56);
+  assert.equal(getGlassContentOpacity(90), 68);
 });

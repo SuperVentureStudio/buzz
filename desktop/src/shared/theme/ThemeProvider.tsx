@@ -336,6 +336,11 @@ export function getGlassTintOpacity(value: number): number {
   return Math.round(clampGlassOpacity(value) * 0.28);
 }
 
+/** Keep large workspace panes legible while letting the desktop show through. */
+export function getGlassContentOpacity(value: number): number {
+  return Math.round(41 + clampGlassOpacity(value) * 0.3);
+}
+
 /** Set the tint opacity layered above native blur; lower values reveal more. */
 function applyGlassOpacity(value: number) {
   const opacity = clampGlassOpacity(value);
@@ -346,6 +351,10 @@ function applyGlassOpacity(value: number) {
   document.documentElement.style.setProperty(
     "--glass-tint-opacity",
     `${getGlassTintOpacity(opacity)}%`,
+  );
+  document.documentElement.style.setProperty(
+    "--glass-content-opacity",
+    `${getGlassContentOpacity(opacity)}%`,
   );
 }
 

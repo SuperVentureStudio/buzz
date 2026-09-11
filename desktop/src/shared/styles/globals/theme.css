@@ -901,6 +901,24 @@
   background: transparent;
 }
 
+/* SVS treats the workspace as a second glass layer, like MonoCode: the
+ * reading plane has enough dark contrast for long work, but it no longer
+ * blocks the desktop completely. Inputs, dialogs and transient controls keep
+ * their normal solid surfaces. */
+:root[data-glass-background]
+  [data-buzz-content-surface]:not([data-buzz-content-unframed]) {
+  background-color: hsl(
+    var(--background) / var(--glass-content-opacity, 58%)
+  );
+  backdrop-filter: blur(24px) saturate(1.08);
+}
+
+:root[data-glass-background]
+  [data-buzz-content-surface]:not([data-buzz-content-unframed])
+  > .buzz-content-primary {
+  background-color: transparent;
+}
+
 :root[data-glass-background]
   .buzz-huddle-shell[data-huddle-window="true"]
   .buzz-huddle-app-surface-open::after {
