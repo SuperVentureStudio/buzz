@@ -72,6 +72,16 @@ launch it. Moving rather than deleting makes app rollback immediate. Do not
 change the replacement bundle identifier: it is what preserves existing Buzz
 profiles, managed-agent records, relay identity and local data.
 
+Managed-agent records live in
+`~/Library/Application Support/xyz.block.buzz.app/agents/managed-agents.json`.
+The file holds agent private keys: read only names and `env_vars` keys, copy it
+into the same dated backup directory, and edit it only while SVS is quit, or
+the running app can overwrite the change.
+
+This Mac has no screen-recording permission for the terminal, so `screencapture`
+cannot verify the installed app. Cover UI changes with unit tests and ask
+Faisal to check the real window.
+
 ## SVS visual system
 
 SVS uses `svs` and `svs-dark` as its first-class themes. Historical `buzz` and
