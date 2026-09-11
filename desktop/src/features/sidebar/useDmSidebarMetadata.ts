@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { useManagedAgentsQuery } from "@/features/agents/hooks";
 import { usePresenceQuery } from "@/features/presence/hooks";
 import { resolveUserLabel } from "@/features/profile/lib/identity";
 import { useUsersBatchQuery } from "@/features/profile/hooks";
@@ -51,7 +52,19 @@ export function useDmSidebarMetadata({
   const dmProfilesQuery = useUsersBatchQuery(dmParticipantPubkeys, {
     enabled: enabled && directMessages.length > 0,
   });
+  const managedAgentsQuery = useManagedAgentsQuery({
+    enabled: enabled && directMessages.length > 0,
+  });
   const dmProfiles = dmProfilesQuery.data?.profiles;
+  const svsManagedPubkeys = React.useMemo(
+    () =>
+      new Set(
+        (managedAgentsQuery.data ?? [])
+          .filter((agent) => agent.envVars?.SVS_MANAGED === "1")
+          .map((agent) => agent.pubkey.toLowerCase()),
+      ),
+    [managedAgentsQuery.data],
+  );
   const dmPresenceByChannelId = React.useMemo(
     () =>
       Object.fromEntries(
@@ -134,12 +147,21 @@ export function useDmSidebarMetadata({
               true
                 ? { isAgent: true }
                 : {}),
+              ...(svsManagedPubkeys.has(participant.pubkey.toLowerCase())
+                ? { isSvsManaged: true }
+                : {}),
               pubkey: participant.pubkey,
             })),
           ];
         }),
       ) satisfies Record<string, SidebarDmParticipant[]>,
-    [currentPubkey, directMessages, dmProfiles, selfDmLabels],
+    [
+      currentPubkey,
+      directMessages,
+      dmProfiles,
+      selfDmLabels,
+      svsManagedPubkeys,
+    ],
   );
 
   return {

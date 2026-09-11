@@ -156,6 +156,7 @@ export type SidebarDmParticipant = {
   avatarUrl: string | null;
   label: string;
   isAgent?: boolean;
+  isSvsManaged?: boolean;
   pubkey: string;
 };
 
@@ -203,6 +204,7 @@ function DmChannelIcon({
           shape={primaryParticipant.isAgent ? "squircle" : "circle"}
           size={DM_AVATAR_SIZE}
           status={presenceStatus}
+          svsManaged={primaryParticipant.isSvsManaged}
           statusTestId={`channel-presence-${channelName}`}
           testId={`channel-avatar-${channelName}`}
         />
