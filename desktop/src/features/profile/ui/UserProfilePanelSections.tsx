@@ -21,6 +21,7 @@ import type {
   useUserProfileQuery,
 } from "@/features/profile/hooks";
 import type { ProfileField } from "@/features/profile/ui/UserProfilePanelFields";
+import { isSvsManagedAgent } from "@/features/profile/ui/UserProfilePanelFields";
 import { AGENT_DETAILS_FIELD_LABELS } from "@/features/profile/ui/UserProfilePanelAgentDetails";
 import {
   ProfileInfoTabContent,
@@ -192,6 +193,7 @@ export function ProfileSummaryView({
   userStatus,
 }: ProfileSummaryViewProps) {
   const notManagedOnDevice = useIsOtherSetupAgent(pubkey, profile?.ownerPubkey);
+  const isSvsManaged = isSvsManagedAgent(managedAgent);
   const activeTurns = useAgentWorking(isBot ? pubkey : null).channels;
   const stickyLayoutRef = React.useRef<HTMLDivElement>(null);
   const [primaryActionsConcealed, setPrimaryActionsConcealed] =
@@ -406,6 +408,7 @@ export function ProfileSummaryView({
           onEditAgent={canEditAgent ? handleEditAgent : undefined}
           presenceStatus={presenceStatus}
           profile={profile}
+          svsManaged={isSvsManaged}
           userStatus={userStatus}
         />
       </div>
@@ -426,7 +429,7 @@ export function ProfileSummaryView({
           followMutation={followMutation}
           agentActionDisabled={isAgentActionPending}
           agentStartBlockReason={
-            managedAgent
+            managedAgent && !isSvsManaged
               ? agentPresenceStartBlockReason(
                   isManagedAgentActive(managedAgent),
                   presenceStatus,
@@ -434,21 +437,24 @@ export function ProfileSummaryView({
               : undefined
           }
           agentActionLabel={
-            isOwner === true && managedAgent
+            isOwner === true && managedAgent && !isSvsManaged
               ? getManagedAgentPrimaryActionLabel(managedAgent)
               : undefined
           }
           agentActionLive={
-            managedAgent?.status === "running" ||
+            !isSvsManaged &&
+            (managedAgent?.status === "running" ||
             managedAgent?.status === "deployed"
+            )
           }
           onAgentPrimaryAction={
-            isOwner === true && managedAgent
+            isOwner === true && managedAgent && !isSvsManaged
               ? handleAgentPrimaryAction
               : undefined
           }
           onAgentRestart={
             isOwner === true &&
+            !isSvsManaged &&
             managedAgent?.backend.type === "local" &&
             (managedAgent.status === "running" ||
               managedAgent.status === "deployed")
@@ -610,6 +616,7 @@ function ProfileHero({
   onEditAgent,
   presenceStatus,
   profile,
+  svsManaged = false,
   userStatus,
 }: {
   displayName: string;
@@ -618,6 +625,7 @@ function ProfileHero({
   onEditAgent?: () => void;
   presenceStatus: "online" | "away" | "offline" | undefined;
   profile: ProfileSummaryViewProps["profile"];
+  svsManaged?: boolean;
   userStatus: ProfileSummaryViewProps["userStatus"];
 }) {
   const presenceDotClassName = isBot ? "h-4.5 w-4.5" : "h-3.5 w-3.5";
@@ -634,7 +642,16 @@ function ProfileHero({
     <div className="flex flex-col items-center gap-3 text-center">
       <MaskedAvatarBadgeFrame
         badge={
-          presenceStatus ? (
+          svsManaged ? (
+            <span
+              aria-label="Managed by SVS"
+              className="flex h-6 w-6 items-center justify-center rounded-full"
+              data-testid="user-profile-svs-managed-badge"
+              role="img"
+            >
+              <span className={cn("rounded-full bg-primary", presenceDotClassName)} />
+            </span>
+          ) : presenceStatus ? (
             <span
               aria-label={getPresenceLabel(presenceStatus)}
               className="flex h-6 w-6 items-center justify-center rounded-full"
