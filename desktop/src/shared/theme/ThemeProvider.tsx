@@ -336,9 +336,9 @@ export function getGlassTintOpacity(value: number): number {
   return Math.round(clampGlassOpacity(value) * 0.28);
 }
 
-/** Keep large workspace panes legible while letting the desktop show through. */
+/** Keep workspace text legible without burying the native glass beneath it. */
 export function getGlassContentOpacity(value: number): number {
-  return Math.round(41 + clampGlassOpacity(value) * 0.3);
+  return Math.round(14 + clampGlassOpacity(value) * 0.4);
 }
 
 /** Set the tint opacity layered above native blur; lower values reveal more. */

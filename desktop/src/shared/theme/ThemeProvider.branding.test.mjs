@@ -36,8 +36,8 @@ test("glass uses a light color tint instead of replaying the full opacity", () =
   assert.equal(getGlassTintOpacity(90), 25);
 });
 
-test("glass keeps workspace panes legible while visibly translucent", () => {
-  assert.equal(getGlassContentOpacity(30), 50);
-  assert.equal(getGlassContentOpacity(50), 56);
-  assert.equal(getGlassContentOpacity(90), 68);
+test("glass gives workspace panes a visibly translucent native-glass range", () => {
+  assert.equal(getGlassContentOpacity(30), 26);
+  assert.equal(getGlassContentOpacity(50), 34);
+  assert.equal(getGlassContentOpacity(90), 50);
 });
