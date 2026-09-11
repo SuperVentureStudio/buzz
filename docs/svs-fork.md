@@ -103,3 +103,14 @@ When refining the look, verify all three states on a real macOS desktop:
 2. Glass on with a light wallpaper: readable labels, inputs and selected rows.
 3. Glass on with a dark wallpaper: sidebar separation, modal readability and
    visible macOS traffic lights.
+
+## SVS-managed agents
+
+SVS-managed agents are external SVS runtimes that communicate through Buzz;
+they are not processes launched or supervised by the desktop app. Mark their
+persisted managed-agent record with `env_vars.SVS_MANAGED = "1"`. The profile
+and direct-message sidebar render this as the cyan SVS marker and suppress
+local Start/Stop controls. This is intentionally separate from relay presence:
+the normal green/away/offline indicators describe a Buzz relay session, whereas
+the cyan marker describes SVS ownership and remains visible while no local
+`buzz-acp` process exists. Keep ordinary contacts on the existing presence path.
