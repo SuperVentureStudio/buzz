@@ -17,6 +17,7 @@ import {
   useCopyFeedback,
 } from "@/shared/ui/HoverCopyIndicator";
 import { PubKey } from "@/shared/ui/PubKey";
+import { Badge } from "@/shared/ui/badge";
 import { PanelSectionGroup } from "@/shared/ui/PanelSectionGroup";
 import type {
   AgentPersona,
@@ -46,6 +47,10 @@ export type ProfileField = {
   testId?: string;
   trailingNode?: React.ReactNode;
 };
+
+export function isSvsManagedAgent(agent: ManagedAgent | undefined) {
+  return agent?.envVars?.SVS_MANAGED === "1";
+}
 
 const AGENT_INFO_LABELS = new Set([
   "Public key",
@@ -326,11 +331,18 @@ export function buildOwnerFields({
   }
 
   if (managedAgent) {
+    const managedBySvs = isSvsManagedAgent(managedAgent);
     fields.push({
-      displayValue: managedAgent.status
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (char: string) => char.toUpperCase()),
-      displayNode: (
+      displayValue: managedBySvs
+        ? "Managed by SVS"
+        : managedAgent.status
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (char: string) => char.toUpperCase()),
+      displayNode: managedBySvs ? (
+        <Badge className="normal-case tracking-normal" variant="default">
+          Managed by SVS
+        </Badge>
+      ) : (
         <AgentStatusBadge
           className="normal-case tracking-normal"
           presenceLoaded={presenceLoaded}
@@ -376,7 +388,7 @@ export function buildOwnerFields({
     });
   }
 
-  if (managedAgent) {
+  if (managedAgent && !isSvsManagedAgent(managedAgent)) {
     fields.push({
       displayValue: managedAgent.startOnAppLaunch ? "Yes" : "No",
       icon: Server,

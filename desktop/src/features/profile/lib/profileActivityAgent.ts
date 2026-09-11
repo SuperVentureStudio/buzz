@@ -3,6 +3,7 @@ import type { ManagedAgent, RelayAgent } from "@/shared/api/types";
 export type ProfileActivityAgent = Pick<ManagedAgent, "pubkey" | "name"> & {
   status: ManagedAgent["status"] | "unknown";
   avatarUrl?: string | null;
+  externallyManaged?: boolean;
 };
 
 export function resolveProfileActivityAgent({
@@ -26,6 +27,7 @@ export function resolveProfileActivityAgent({
       name: managedAgent.name,
       pubkey: managedAgent.pubkey,
       status: managedAgent.status,
+      externallyManaged: managedAgent.envVars?.SVS_MANAGED === "1",
     };
   }
 

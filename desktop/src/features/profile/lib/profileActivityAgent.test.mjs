@@ -49,3 +49,17 @@ test("local managed runtime status still takes precedence", () => {
     "running",
   );
 });
+
+test("profile activity marks an explicitly SVS-managed runtime as external", () => {
+  const agent = resolveProfileActivityAgent({
+    ...input,
+    managedAgent: {
+      pubkey: input.effectivePubkey,
+      name: "Maya",
+      status: "stopped",
+      envVars: { SVS_MANAGED: "1" },
+    },
+  });
+
+  assert.equal(agent.externallyManaged, true);
+});
