@@ -1,0 +1,11 @@
+{
+  "productName": "SVS Buzz",
+  "identifier": "xyz.block.buzz.app",
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["buzz"]
+      }
+    }
+  }
+}
