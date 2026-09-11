@@ -48,11 +48,11 @@
     --sidebar-border: 225 13.56% 76.86%;
     --sidebar-ring: 225 13.56% 76.86%;
     /* Exact Buzz palette tokens; components consume these semantically. */
-    --buzz-gradient-light-top: #e6e6b6;
-    --buzz-gradient-light-bottom: #c4d0da;
-    --buzz-gradient-dark-top: #4a4616;
-    --buzz-gradient-dark-bottom: #0a1423;
-    --buzz-content-dark: 0 0% 10.1960784314%;
+    --buzz-gradient-light-top: #e5fbff;
+    --buzz-gradient-light-bottom: #b8deea;
+    --buzz-gradient-dark-top: #062938;
+    --buzz-gradient-dark-bottom: #020a11;
+    --buzz-content-dark: 207 56% 7%;
     /* Hosted-community onboarding intentionally keeps this light palette in
        both app themes; semantic tokens keep component code color-agnostic. */
     --buzz-hosted-community-surface-fg: 23 23 23;
@@ -185,11 +185,11 @@
  * from the optional prominent treatment.
  */
 :root {
-  --sidebar-row-subtle-active-surface: rgb(0 0 0 / 7%);
+  --sidebar-row-subtle-active-surface: rgb(6 229 242 / 16%);
 }
 
 :root.dark {
-  --sidebar-row-subtle-active-surface: rgb(255 255 255 / 16%);
+  --sidebar-row-subtle-active-surface: rgb(6 229 242 / 20%);
 }
 
 /* The prominent treatment is exclusive to Buzz's painted gradient. */
@@ -256,7 +256,7 @@
   --buzz-search-surface: rgb(255 255 255 / 4%);
   --buzz-chrome-foreground: rgb(255 255 255 / 50%);
   --buzz-hover-surface: rgb(255 255 255 / 4%);
-  --buzz-active-fill: 0 0% 100%;
+  --buzz-active-fill: 183 94% 49%;
   --buzz-active-foreground: 0 0% 100%;
 }
 
