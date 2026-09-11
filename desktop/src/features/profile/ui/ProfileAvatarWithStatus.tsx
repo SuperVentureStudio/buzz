@@ -25,6 +25,7 @@ type ProfileAvatarWithStatusProps = {
   shape?: "circle" | "squircle";
   size: number;
   status?: PresenceStatus;
+  svsManaged?: boolean;
   statusTestId?: string;
   testId?: string;
 };
@@ -60,18 +61,20 @@ export function ProfileAvatarWithStatus({
   shape = "circle",
   size,
   status,
+  svsManaged = false,
   statusTestId,
   testId,
 }: ProfileAvatarWithStatusProps) {
   const statusLabel = status ? getPresenceLabel(status) : null;
-  const cutout = status
+  const hasBadge = svsManaged || status !== undefined;
+  const cutout = hasBadge
     ? {
         cx: geometry.centerX,
         cy: geometry.centerY,
         r: geometry.cutoutSize / 2,
       }
     : undefined;
-  const badgeBox = status
+  const badgeBox = hasBadge
     ? {
         bottom: size - geometry.centerY - geometry.dotSize / 2,
         height: geometry.dotSize,
@@ -83,15 +86,19 @@ export function ProfileAvatarWithStatus({
   return (
     <MaskedAvatarBadgeFrame
       badge={
-        status ? (
+        hasBadge ? (
           <span
-            aria-label={statusLabel ?? undefined}
+            aria-label={svsManaged ? "Managed by SVS" : (statusLabel ?? undefined)}
             className="flex h-full w-full items-center justify-center rounded-full"
             data-testid={statusTestId}
             role="img"
           >
-            <PresenceDot className="h-full w-full" status={status} />
-            {statusLabel ? (
+            {svsManaged ? (
+              <span className="h-full w-full rounded-full bg-primary" />
+            ) : status ? (
+              <PresenceDot className="h-full w-full" status={status} />
+            ) : null}
+            {statusLabel && !svsManaged ? (
               <span className="sr-only">{statusLabel}</span>
             ) : null}
           </span>
