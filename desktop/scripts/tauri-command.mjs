@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -18,6 +18,51 @@ const defaultTauriEntrypoint = path.resolve(
   tauriPackage.bin.tauri,
 );
 
+const macSidecars = [
+  "buzz-acp",
+  "buzz-agent",
+  "buzz-backend-kubernetes",
+  "buzz-dev-mcp",
+  "git-credential-nostr",
+  "buzz",
+];
+
+function targetTriple(args) {
+  const index = args.findIndex((arg) => arg === "--target");
+  if (index >= 0) return args[index + 1];
+  const inline = args.find((arg) => arg.startsWith("--target="));
+  if (inline) return inline.slice("--target=".length);
+  if (process.platform === "darwin") {
+    return process.arch === "arm64"
+      ? "aarch64-apple-darwin"
+      : "x86_64-apple-darwin";
+  }
+  return undefined;
+}
+
+/** Refuse a package that would silently contain the CI's empty sidecar stubs. */
+export function assertBundledSidecars(args) {
+  const target = targetTriple(args);
+  if (!target?.endsWith("apple-darwin")) return;
+  for (const name of macSidecars) {
+    const sidecar = path.join(
+      desktopRoot,
+      "src-tauri",
+      "binaries",
+      `${name}-${target}`,
+    );
+    let stat;
+    try {
+      stat = statSync(sidecar);
+    } catch {
+      throw new Error(`Missing bundled sidecar: ${sidecar}. Run scripts/bundle-sidecars.sh first.`);
+    }
+    if (!stat.isFile() || stat.size < 1024 || (stat.mode & 0o111) === 0) {
+      throw new Error(`Invalid bundled sidecar: ${sidecar}. Run scripts/bundle-sidecars.sh first.`);
+    }
+  }
+}
+
 function runTauri(args, options = {}) {
   const entrypoint =
     process.env.BUZZ_TAURI_CLI_ENTRYPOINT ?? defaultTauriEntrypoint;
@@ -32,6 +77,7 @@ function runTauri(args, options = {}) {
 
 export function runTauriCommand(args) {
   if (args[0] !== "build") return runTauri(args);
+  assertBundledSidecars(args);
 
   // Tauri runs beforeBuildCommand and then consumes frontendDist. Give the
   // entire invocation a private directory so concurrent OSS/internal packages
