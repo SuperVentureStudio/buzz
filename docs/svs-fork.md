@@ -81,21 +81,21 @@ reuse GitHub's syntax palette but own SVS's cyan accent and gradient.
 
 The macOS main window is transparent from creation. `ThemeProvider.tsx` installs
 the native material through `set_window_vibrancy` before making the WebView
-transparent; `theme.css` then keeps the main reading surface solid while the
-outer chrome and sidebar use the glass tint. Glass defaults on for a new SVS
-profile, while an explicit off preference stays off.
+transparent; `theme.css` then applies controlled translucent layers to the
+outer chrome, sidebar and primary workspace panes. Glass defaults on for a new
+SVS profile, while an explicit off preference stays off.
 
 The user preference is stored as `buzz-glass-background`; tint opacity is
 stored separately and applied through `--glass-background-opacity`. Keep glass
-user-controllable, macOS-specific and contrast-safe. New SVS visual work should change
-the existing theme tokens and the outer chrome only; message content, compose
-surfaces, dialogs and dense operational views remain legible opaque layers.
+user-controllable, macOS-specific and contrast-safe. New SVS visual work should
+change the existing theme tokens; message content, compose surfaces, dialogs
+and dense operational controls remain legible opaque layers.
 
 MonoCode is a useful visual reference, not a dependency: its macOS treatment
-uses a transparent root, a translucent sidebar and a mostly opaque content
-surface, with a user-controlled sidebar opacity. For SVS, reuse that hierarchy
-with the existing cyan brand accent and native vibrancy rather than importing
-MonoCode components, state, or window-management code.
+uses a transparent root and layered translucent workspace panes, with
+user-controlled opacity. For SVS, reuse that hierarchy with the existing cyan
+brand accent and native vibrancy rather than importing MonoCode components,
+state, or window-management code.
 
 When refining the look, verify all three states on a real macOS desktop:
 
