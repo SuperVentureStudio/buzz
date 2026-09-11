@@ -74,15 +74,20 @@ profiles, managed-agent records, relay identity and local data.
 
 ## SVS visual system
 
-SVS already has a macOS-only native vibrancy path. `ThemeProvider.tsx` installs
+SVS uses `svs` and `svs-dark` as its first-class themes. Historical `buzz` and
+`buzz-dark` selections are migrated on read, including community preferences;
+storage keys remain unchanged so existing profiles keep their data. The themes
+reuse GitHub's syntax palette but own SVS's cyan accent and gradient.
+
+The macOS main window is transparent from creation. `ThemeProvider.tsx` installs
 the native material through `set_window_vibrancy` before making the WebView
 transparent; `theme.css` then keeps the main reading surface solid while the
-outer chrome and sidebar use the glass tint. This ordering prevents a white or
-opaque startup flash in WKWebView.
+outer chrome and sidebar use the glass tint. Glass defaults on for a new SVS
+profile, while an explicit off preference stays off.
 
 The user preference is stored as `buzz-glass-background`; tint opacity is
 stored separately and applied through `--glass-background-opacity`. Keep glass
-optional, macOS-specific and contrast-safe. New SVS visual work should change
+user-controllable, macOS-specific and contrast-safe. New SVS visual work should change
 the existing theme tokens and the outer chrome only; message content, compose
 surfaces, dialogs and dense operational views remain legible opaque layers.
 

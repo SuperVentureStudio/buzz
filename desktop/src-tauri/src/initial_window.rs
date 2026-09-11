@@ -33,11 +33,11 @@ pub(crate) fn set_initial_window_backing<R: tauri::Runtime>(window: &tauri::Wind
 #[cfg(target_os = "macos")]
 pub(crate) async fn clear_initial_window_backing<R: tauri::Runtime>(window: &tauri::Window<R>) {
     tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-    // Restore the default system window background so fast-resize gutter
-    // flashes match the platform theme rather than the hardcoded dark color
-    // written at reveal. Targets the Window (NSWindow) layer only; webview
-    // canvas and glass state are unaffected.
-    if let Err(error) = window.set_background_color(None) {
+    // The SVS window is transparent from creation so macOS can composite its
+    // material behind the outer chrome. Clear the temporary first-frame dark
+    // backing explicitly once WebKit has produced a surface. Opaque CSS covers
+    // every surface when the user turns glass off.
+    if let Err(error) = window.set_background_color(Some(tauri::window::Color(0, 0, 0, 0))) {
         eprintln!("buzz-desktop: failed to clear initial window backing: {error}");
     }
 }

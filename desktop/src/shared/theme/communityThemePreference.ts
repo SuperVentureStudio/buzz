@@ -1,6 +1,10 @@
 import { normalizeRelayUrl } from "@/features/profile/lib/selfProfileStorage";
 import { ACCENT_COLORS } from "./ThemeProvider";
-import { SYNTAX_THEMES, type SyntaxThemeName } from "./theme-loader";
+import {
+  SYNTAX_THEMES,
+  normalizeSvsThemeName,
+  type SyntaxThemeName,
+} from "./theme-loader";
 
 const STORAGE_KEY_PREFIX = "buzz-community-theme.v1";
 const OUTBOX_KEY_PREFIX = "buzz-community-theme-outbox.v1";
@@ -15,7 +19,7 @@ export type CommunityThemePreference = {
 
 export const DEFAULT_COMMUNITY_THEME: CommunityThemePreference = Object.freeze({
   version: 1,
-  theme: "buzz",
+  theme: "svs",
   accent: "#3b82f6",
   followSystem: true,
 });
@@ -47,7 +51,7 @@ export function parseCommunityThemePreference(
   if (
     candidate.version !== 1 ||
     typeof candidate.theme !== "string" ||
-    !THEME_NAMES.has(candidate.theme) ||
+    !THEME_NAMES.has(normalizeSvsThemeName(candidate.theme)) ||
     typeof candidate.accent !== "string" ||
     !ACCENTS.has(candidate.accent) ||
     typeof candidate.followSystem !== "boolean"
@@ -56,7 +60,7 @@ export function parseCommunityThemePreference(
   }
   return {
     version: 1,
-    theme: candidate.theme as SyntaxThemeName,
+    theme: normalizeSvsThemeName(candidate.theme) as SyntaxThemeName,
     accent: candidate.accent,
     followSystem: candidate.followSystem,
   };
