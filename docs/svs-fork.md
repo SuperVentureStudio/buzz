@@ -31,7 +31,7 @@ is separate from the installed Buzz app.
 keeps Buzz's production bundle identifier and URL scheme, so macOS resolves the
 same app-data directory and the release build reads the existing
 `buzz-desktop` keychain identity. Its `Info.svs.plist` overlay changes the
-Finder and Dock name to `SVS Buzz`. Use this build to replace the installed app.
+Finder and Dock name to `SVS`. Use this build to replace the installed app.
 
 The source mark is `desktop/src-tauri/icons/svs-source.png`. Regenerate the
 macOS icon set from that mark before changing any icon sizes. Build the branded

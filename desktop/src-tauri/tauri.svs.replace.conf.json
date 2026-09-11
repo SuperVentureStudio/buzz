@@ -1,5 +1,5 @@
 {
-  "productName": "SVS Buzz",
+  "productName": "SVS",
   "identifier": "xyz.block.buzz.app",
   "plugins": {
     "deep-link": {
