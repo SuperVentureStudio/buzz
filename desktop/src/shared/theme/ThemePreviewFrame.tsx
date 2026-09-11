@@ -4,19 +4,19 @@ import { cn } from "@/shared/lib/cn";
 export type ThemePreviewVars = Record<string, string>;
 
 /**
- * Buzz sidebar-gradient stop tokens, keyed by theme name. The actual custom
+ * SVS sidebar-gradient stop tokens, keyed by theme name. The actual custom
  * colors live once in `shared/styles/globals/theme.css`; the picker consumes
  * those same semantic variables instead of duplicating raw values here.
  */
-export const BUZZ_GRADIENT_STOPS: Record<
+export const SVS_GRADIENT_STOPS: Record<
   string,
   { top: string; bottom: string }
 > = {
-  buzz: {
+  svs: {
     top: "var(--buzz-gradient-light-top)",
     bottom: "var(--buzz-gradient-light-bottom)",
   },
-  "buzz-dark": {
+  "svs-dark": {
     top: "var(--buzz-gradient-dark-top)",
     bottom: "var(--buzz-gradient-dark-bottom)",
   },

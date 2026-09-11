@@ -1,10 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveEffectiveAccent, SVS_ACCENT } from "./ThemeProvider.tsx";
+import {
+  isSvsTheme,
+  resolveEffectiveAccent,
+  SVS_ACCENT,
+} from "./ThemeProvider.tsx";
+import {
+  getThemePair,
+  normalizeSvsThemeName,
+  resolveShikiThemeName,
+} from "./theme-loader.ts";
 
 test("SVS themes use the SVS cyan accent while other themes keep the chosen accent", () => {
-  assert.equal(resolveEffectiveAccent("buzz", "#ef4444"), SVS_ACCENT);
-  assert.equal(resolveEffectiveAccent("buzz-dark", "#ef4444"), SVS_ACCENT);
+  assert.equal(isSvsTheme("svs"), true);
+  assert.equal(isSvsTheme("svs-dark"), true);
+  assert.equal(resolveEffectiveAccent("svs", "#ef4444"), SVS_ACCENT);
+  assert.equal(resolveEffectiveAccent("svs-dark", "#ef4444"), SVS_ACCENT);
   assert.equal(resolveEffectiveAccent("houston", "#ef4444"), "#ef4444");
+});
+
+test("legacy Buzz selections migrate to the first-class SVS theme pair", () => {
+  assert.equal(normalizeSvsThemeName("buzz"), "svs");
+  assert.equal(normalizeSvsThemeName("buzz-dark"), "svs-dark");
+  assert.equal(normalizeSvsThemeName("houston"), "houston");
+  assert.equal(getThemePair("svs"), "svs-dark");
+  assert.equal(resolveShikiThemeName("svs-dark"), "github-dark");
 });

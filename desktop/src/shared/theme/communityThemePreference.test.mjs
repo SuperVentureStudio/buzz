@@ -48,6 +48,20 @@ test("parses only the versioned stable appearance contract", () => {
   );
 });
 
+test("legacy community Buzz themes are normalized to SVS", () => {
+  const legacy = {
+    version: 1,
+    theme: "buzz",
+    accent: "#a855f7",
+    followSystem: true,
+  };
+  assert.deepEqual(parseCommunityThemePreference(legacy), {
+    ...legacy,
+    theme: "svs",
+  });
+  assert.equal(DEFAULT_COMMUNITY_THEME.theme, "svs");
+});
+
 test("local preferences are isolated by pubkey and normalized relay", () => {
   globalThis.window = { localStorage: localStorageStub() };
   const aliceA = {

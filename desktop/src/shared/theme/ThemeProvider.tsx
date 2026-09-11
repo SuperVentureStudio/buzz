@@ -20,6 +20,7 @@ import {
   extractThemeInfo,
   getThemePair,
   loadThemeData,
+  normalizeSvsThemeName,
   resolveSystemTheme,
 } from "./theme-loader";
 
@@ -31,7 +32,7 @@ export const GLASS_OPACITY_STORAGE_KEY = "buzz-glass-opacity";
 export const PROMINENT_ACTIVE_TAB_STORAGE_KEY = "buzz-prominent-active-tab";
 export const GLASS_OPACITY_MIN = 30;
 export const GLASS_OPACITY_MAX = 90;
-export const DEFAULT_GLASS_OPACITY = 65;
+export const DEFAULT_GLASS_OPACITY = 50;
 export const DEFAULT_PROMINENT_ACTIVE_TAB = false;
 export const NEUTRAL_ACCENT = "neutral";
 export const SVS_ACCENT = "#06e5f2";
@@ -106,7 +107,16 @@ function readStoredTheme(fallback: SyntaxThemeName): SyntaxThemeName {
   if (stored === "light") return "catppuccin-latte";
   if (stored === "dark" || stored === "system") return "houston";
 
-  return isValidThemeName(stored) ? stored : fallback;
+  const normalized = normalizeSvsThemeName(stored);
+  if (normalized !== stored) {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, normalized);
+    } catch {
+      // The normalized selection remains active when storage is unavailable.
+    }
+  }
+
+  return isValidThemeName(normalized) ? normalized : fallback;
 }
 
 function getContrastColor(hex: string): string {
@@ -241,8 +251,8 @@ function applyAccentColor(value: string) {
  * SVS's built-in themes use a fixed cyan accent. The user's chosen accent is
  * left untouched in storage so it returns when they switch to another theme.
  */
-export function isBuzzTheme(themeName: string): boolean {
-  return themeName === "buzz" || themeName === "buzz-dark";
+export function isSvsTheme(themeName: string): boolean {
+  return themeName === "svs" || themeName === "svs-dark";
 }
 
 /**
@@ -253,22 +263,26 @@ export function resolveEffectiveAccent(
   themeName: string,
   accentColor: string,
 ): string {
-  return isBuzzTheme(themeName) ? SVS_ACCENT : accentColor;
+  return isSvsTheme(themeName) ? SVS_ACCENT : accentColor;
 }
 
-/** Toggle the Buzz-specific gradient marker independently from glass. */
-function applyBuzzSidebar(themeName: string) {
+/** Toggle the SVS-specific gradient marker independently from glass. */
+function applySvsSidebar(themeName: string) {
   const root = document.documentElement;
-  if (isBuzzTheme(themeName)) {
+  if (isSvsTheme(themeName)) {
+    root.setAttribute("data-svs-sidebar", "");
+    // The stylesheet keeps this structural marker until its selectors are
+    // renamed; the theme identity and persisted preference are SVS-only.
     root.setAttribute("data-buzz-sidebar", "");
-    // Keep the concrete Buzz variant on the root as well as the generic
+    // Keep the concrete SVS variant on the root as well as the generic
     // marker. The gradient stylesheet matches this attribute directly, which
     // makes WKWebView invalidate the painted background when light/dark mode
     // changes instead of relying only on a custom-property dependency update.
-    root.setAttribute("data-buzz-theme", themeName);
+    root.setAttribute("data-svs-theme", themeName);
   } else {
+    root.removeAttribute("data-svs-sidebar");
     root.removeAttribute("data-buzz-sidebar");
-    root.removeAttribute("data-buzz-theme");
+    root.removeAttribute("data-svs-theme");
   }
 }
 
@@ -405,16 +419,16 @@ function applyCachedVars(): string | null {
     }
     root.classList.remove("light", "dark");
     root.classList.add(isDark ? "dark" : "light");
-    applyBuzzSidebar(themeName);
+    applySvsSidebar(normalizeSvsThemeName(themeName));
     glassThemeReady = true;
 
     const accent = getStorageItem(ACCENT_STORAGE_KEY) ?? DEFAULT_ACCENT;
-    // Pin Buzz themes to the neutral accent here too, matching applyTheme.
-    // Otherwise a cached Buzz theme + non-neutral stored accent flashes the
+    // Pin SVS themes to the neutral accent here too, matching applyTheme.
+    // Otherwise a cached SVS theme + non-neutral stored accent flashes the
     // old accent on reload until the async applyTheme effect runs.
-    applyAccentColor(resolveEffectiveAccent(themeName, accent));
+    applyAccentColor(resolveEffectiveAccent(normalizeSvsThemeName(themeName), accent));
 
-    return themeName;
+    return normalizeSvsThemeName(themeName);
   } catch {
     return null;
   }
@@ -446,14 +460,14 @@ async function applyTheme(name: SyntaxThemeName): Promise<{
 
   root.classList.remove("light", "dark");
   root.classList.add(isDark ? "dark" : "light");
-  applyBuzzSidebar(name);
+  applySvsSidebar(name);
   glassThemeReady = true;
   maybeEnableGlassBackground(glassVibrancyRequest);
 
   // Apply the accent synchronously in the same batch as the theme vars so the
   // browser paints the new theme + accent together. Doing this in a later
   // microtask (e.g. the caller's `.then`) let the previous accent flash on the
-  // new theme for a frame — the flicker seen when switching to Buzz. Buzz
+  // new theme for a frame — the flicker seen when switching to SVS. SVS
   // themes resolve to the neutral accent regardless of the stored value.
   applyAccentColor(
     resolveEffectiveAccent(
@@ -477,7 +491,7 @@ async function applyTheme(name: SyntaxThemeName): Promise<{
 
 export function ThemeProvider({
   children,
-  defaultTheme = "buzz",
+  defaultTheme = "svs",
 }: ThemeProviderProps) {
   const glassBackgroundSupported = isTauri() && isMacPlatform();
 
@@ -501,10 +515,9 @@ export function ThemeProvider({
   });
   const [glassBackground, setGlassBackgroundState] = useState<boolean>(() => {
     const stored = getStorageItem(GLASS_BACKGROUND_STORAGE_KEY);
-    // Glass is opt-in. Explicitly saved preferences remain intact, while a
-    // fresh profile starts with the normal opaque window treatment. Keep an
-    // unsupported platform opaque without erasing a preference saved on Mac.
-    const enabled = glassBackgroundSupported && stored === "true";
+    // SVS defaults to glass on macOS. An explicit saved false remains opaque;
+    // unsupported platforms stay opaque without erasing their Mac preference.
+    const enabled = glassBackgroundSupported && stored !== "false";
     glassBackgroundPreferenceEnabled = enabled;
     return enabled;
   });
@@ -522,7 +535,7 @@ export function ThemeProvider({
   const [followSystem, setFollowSystemState] = useState<boolean>(() => {
     const stored = getStorageItem(FOLLOW_SYSTEM_KEY);
     if (stored !== null) return stored === "true";
-    // Fresh profiles (no saved theme) default to System mode so the Buzz
+    // Fresh profiles (no saved theme) default to System mode so the SVS
     // default tracks the OS light/dark scheme. Profiles that picked a theme
     // before this toggle existed keep their fixed theme until they opt in.
     return getStorageItem(THEME_STORAGE_KEY) === null;
@@ -572,12 +585,12 @@ export function ThemeProvider({
     void applyWindowGlass(glassBackground);
   }, [glassBackground]);
 
-  // The stronger selected-row treatment belongs exclusively to Buzz. Keep
-  // the saved preference so it is restored when the user returns to Buzz,
+  // The stronger selected-row treatment belongs exclusively to SVS. Keep
+  // the saved preference so it is restored when the user returns to SVS,
   // but remove the live marker for every other theme.
   useEffect(() => {
     setProminentActiveTabActive(
-      prominentActiveTab && isBuzzTheme(effectiveTheme),
+      prominentActiveTab && isSvsTheme(effectiveTheme),
     );
   }, [effectiveTheme, prominentActiveTab]);
 
@@ -624,7 +637,7 @@ export function ThemeProvider({
   }, [followSystem]);
 
   // Re-apply the accent when the user picks a new swatch or the effective theme
-  // changes. applyTheme already applies the (Buzz-neutral-aware) accent in the
+  // changes. applyTheme already applies the (SVS-neutral-aware) accent in the
   // same synchronous batch as the theme vars — the flicker fix — so this effect
   // is idempotent on theme changes and simply covers accent-only changes.
   useEffect(() => {
@@ -632,9 +645,10 @@ export function ThemeProvider({
   }, [accentColor, effectiveTheme]);
 
   const setTheme = useCallback((name: string) => {
-    if (!isValidThemeName(name)) return;
-    setSelectedTheme(name);
-    window.localStorage.setItem(THEME_STORAGE_KEY, name);
+    const normalized = normalizeSvsThemeName(name);
+    if (!isValidThemeName(normalized)) return;
+    setSelectedTheme(normalized);
+    window.localStorage.setItem(THEME_STORAGE_KEY, normalized);
   }, []);
 
   const setAccentColor = useCallback((color: string) => {
@@ -655,8 +669,10 @@ export function ThemeProvider({
     }) => {
       // Write the complete preference before updating state so applyTheme reads
       // the target community's accent in the same batch, never the previous one.
+      const theme = normalizeSvsThemeName(appearance.theme);
+      if (!isValidThemeName(theme)) return;
       try {
-        window.localStorage.setItem(THEME_STORAGE_KEY, appearance.theme);
+        window.localStorage.setItem(THEME_STORAGE_KEY, theme);
         window.localStorage.setItem(ACCENT_STORAGE_KEY, appearance.accent);
         window.localStorage.setItem(
           FOLLOW_SYSTEM_KEY,
@@ -665,7 +681,7 @@ export function ThemeProvider({
       } catch {
         // Keep the active appearance responsive even if the local cache is full.
       }
-      setSelectedTheme(appearance.theme);
+      setSelectedTheme(theme);
       setAccentColorState(appearance.accent);
       setFollowSystemState(appearance.followSystem);
     },
