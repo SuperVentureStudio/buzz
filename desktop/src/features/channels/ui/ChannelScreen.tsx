@@ -82,6 +82,8 @@ import { useChannelPanelHistoryState } from "./useChannelPanelHistoryState";
 import { useChannelProfilePanel } from "./useChannelProfilePanel";
 import { useChannelTargetReset } from "./useChannelTargetReset";
 import { useChannelRouteTarget } from "./useChannelRouteTarget";
+import { useForumPostsQuery } from "@/features/forum/hooks";
+import { latestForumPostAt } from "@/features/forum/lib/latestPostAt";
 import { useChannelOpenReadState } from "./useChannelOpenReadState";
 import { useChannelUnreadState } from "./useChannelUnreadState";
 import type { ChannelScreenProps } from "./ChannelScreen.types";
@@ -219,9 +221,23 @@ export function ChannelScreen({
     }
     return null;
   }, [messagesQuery.data]);
-  const activeReadAt = latestActiveMessage
-    ? new Date(latestActiveMessage.created_at * 1_000).toISOString()
-    : null;
+  // Forum channels never populate `messagesQuery` (it is disabled for them),
+  // so their newest top-level event comes from the post list instead. Without
+  // this the open-read marker resolves to null for every forum and the sidebar
+  // row stays bold after the user has read it. Same query key as ForumView, so
+  // this shares that cache rather than issuing a second read.
+  const forumPostsQuery = useForumPostsQuery(
+    activeChannel?.channelType === "forum" ? activeChannel : null,
+  );
+  const latestForumPostCreatedAt = latestForumPostAt(forumPostsQuery.data);
+  const activeReadAt =
+    activeChannel?.channelType === "forum"
+      ? latestForumPostCreatedAt === null
+        ? null
+        : new Date(latestForumPostCreatedAt * 1_000).toISOString()
+      : latestActiveMessage
+        ? new Date(latestActiveMessage.created_at * 1_000).toISOString()
+        : null;
   useChannelOpenReadState(
     activeChannelId,
     activeChannel?.isMember,
