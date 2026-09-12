@@ -70,7 +70,13 @@ export function useForumPostsQuery(channel: Channel | null) {
         relaySelfPubkey,
       ),
     initialPageParam: undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    // A short page is the end of the forum. The relay hands back a cursor
+    // whenever it served any rows, so trusting it alone offered "load older"
+    // on a forum holding a single post.
+    getNextPageParam: (lastPage) =>
+      lastPage.posts.length < FORUM_POSTS_PAGE_SIZE
+        ? undefined
+        : (lastPage.nextCursor ?? undefined),
     select: (data) => data.pages,
     refetchInterval,
     ...forumFocusRefetchPolicy,
