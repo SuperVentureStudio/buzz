@@ -43,6 +43,13 @@ const VIDEO_REVIEW_TEXT_CONTRAST = 4.5;
 const VIDEO_REVIEW_CHIP_BACKGROUND_ALPHAS = [0.15, 0.3] as const;
 const GLASS_VIBRANCY_MATERIAL = "sidebar";
 
+/**
+ * WindowServer blur radius behind the transparent window. Enough to read as
+ * frosted without smearing the desktop; the CSS tint owns how much colour sits
+ * on top of it.
+ */
+const GLASS_BLUR_RADIUS = 24;
+
 export const ACCENT_COLORS = [
   { name: "Neutral", value: NEUTRAL_ACCENT },
   { name: "Blue", value: "#3b82f6" },
@@ -408,18 +415,29 @@ async function applyWindowGlass(enabled: boolean) {
   glassVibrancyReady = false;
 
   try {
-    await invokeTauri<void>("set_window_vibrancy", {
+    // Transparent window + WindowServer blur first: NSVisualEffectView
+    // composites a fixed material whose tint no CSS opacity can lift, which is
+    // why the old glass bottomed out well short of clear. The material stays as
+    // the fallback for a macOS that no longer exports the private blur symbol.
+    const glassApplied = await invokeTauri<boolean>("set_window_glass", {
       enabled,
-      material: GLASS_VIBRANCY_MATERIAL,
+      blurRadius: GLASS_BLUR_RADIUS,
     });
     if (requestToken !== glassVibrancyRequest) return;
+    if (!glassApplied) {
+      await invokeTauri<void>("set_window_vibrancy", {
+        enabled,
+        material: GLASS_VIBRANCY_MATERIAL,
+      });
+      if (requestToken !== glassVibrancyRequest) return;
+    }
     glassVibrancyEnabled = enabled;
     if (enabled && isMacPlatform()) {
       glassVibrancyReady = true;
       maybeEnableGlassBackground(requestToken);
     }
   } catch (error) {
-    console.warn("set_window_vibrancy failed", error);
+    console.warn("native glass failed", error);
     if (requestToken !== glassVibrancyRequest) return;
     glassVibrancyEnabled = false;
     setGlassBackgroundActive(false);
@@ -445,7 +463,9 @@ function applyCachedVars(): string | null {
     // Pin SVS themes to the neutral accent here too, matching applyTheme.
     // Otherwise a cached SVS theme + non-neutral stored accent flashes the
     // old accent on reload until the async applyTheme effect runs.
-    applyAccentColor(resolveEffectiveAccent(normalizeSvsThemeName(themeName), accent));
+    applyAccentColor(
+      resolveEffectiveAccent(normalizeSvsThemeName(themeName), accent),
+    );
 
     return normalizeSvsThemeName(themeName);
   } catch {
