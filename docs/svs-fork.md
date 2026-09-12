@@ -72,6 +72,15 @@ launch it. Moving rather than deleting makes app rollback immediate. Do not
 change the replacement bundle identifier: it is what preserves existing Buzz
 profiles, managed-agent records, relay identity and local data.
 
+Confirm the install by hashing the binary against the one just built
+(`shasum -a 256 .../Contents/MacOS/buzz-desktop`): a copy that silently failed
+looks exactly like a change that did not take effect.
+
+Budget for the loop. A first release build of the Rust workspace runs 20-30
+minutes; a frontend-only change reuses the cargo cache and takes about two.
+Batch frontend fixes into one build rather than rebuilding per fix, and never
+run `vite`/`build:e2e` into `dist` while Playwright is serving it.
+
 Managed-agent records live in
 `~/Library/Application Support/xyz.block.buzz.app/agents/managed-agents.json`.
 The file holds agent private keys: read only names and `env_vars` keys, copy it
@@ -99,8 +108,20 @@ workspace panes.
 `NSVisualEffectView` (the `window-vibrancy` crate, `set_window_vibrancy`) is the
 fallback for a macOS that no longer exports that symbol. It is not the default
 because each of its materials composites a fixed tint that no CSS opacity above
-it can lift, so the glass could never reach the clear end of the opacity range. Glass defaults on for a new
-SVS profile, while an explicit off preference stays off.
+it can lift, so the glass could never reach the clear end of the opacity range.
+
+Glass defaults on for a new SVS profile, while an explicit off preference
+stays off.
+
+Because nothing now sits between the desktop and the page, **there is no page
+colour left to paint with.** Any element that hides content by filling a strip
+with `bg-background` — a sticky header's scroll mask, a rail mask, a fade —
+becomes a visible box the moment glass is on. Two rules follow:
+
+- Do not mask scrolled content with a fill. Arrange the layout so nothing
+  shows through: keep a sticky element's own padding out of the sticky box so
+  the sticky box is exactly the surface, and let content disappear at its edge.
+- Recolouring such a mask does not fix it. A tinted band is still a band.
 
 The user preference is stored as `buzz-glass-background`; tint opacity is
 stored separately and applied through `--glass-background-opacity`. Keep glass
@@ -110,9 +131,10 @@ and dense operational controls remain legible opaque layers.
 
 MonoCode is a useful visual reference, not a dependency: its macOS treatment
 uses a transparent root and layered translucent workspace panes, with
-user-controlled opacity. For SVS, reuse that hierarchy with the existing cyan
-brand accent and native vibrancy rather than importing MonoCode components,
-state, or window-management code.
+user-controlled opacity, and `CGSSetWindowBackgroundBlurRadius` is the
+mechanism SVS took from it. For SVS, reuse that hierarchy with the existing
+cyan brand accent rather than importing MonoCode components, state, or
+window-management code.
 
 When refining the look, verify all three states on a real macOS desktop:
 
@@ -120,6 +142,55 @@ When refining the look, verify all three states on a real macOS desktop:
 2. Glass on with a light wallpaper: readable labels, inputs and selected rows.
 3. Glass on with a dark wallpaper: sidebar separation, modal readability and
    visible macOS traffic lights.
+
+## Traps this fork has already paid for
+
+Each of these cost a wrong fix or a wasted build. Read before assuming.
+
+**Unread state is in a database, not in the React code.** The sidebar's bold
+row and its dot come from
+`~/Library/Application Support/xyz.block.buzz.app/observed-unread.db`.
+`observed_events` holds each unread event — `root_id` set means a thread reply,
+null means a top-level post — and `read_markers` holds `<channelId>`,
+`thread:<rootId>` and `msg:<id>` contexts. An event is read once some marker
+covering it is newer than its `created_at`. Query it. Reasoning about the
+unread memo instead produced two confident wrong diagnoses in a row; one
+`sqlite3` query settled it.
+
+**The E2E mock bridge never runs the read-state path.** No `markChannelRead`
+call reaches it, so an unread spec written against the mock passes with or
+without the fix it claims to protect. Do not write one — it is worse than no
+test. Verify unread behaviour against the database above.
+
+**Forum channels disable the chat messages query.** `useChannelMessagesQuery`
+is `enabled: channel.channelType !== "forum"`. Anything derived from it is
+structurally null for a forum. That is why the channel read marker was never
+written for forums: `ChannelScreen` took the marker timestamp from that query.
+Check the predicate before reusing a value from it on a forum surface.
+
+**`VirtualizedList` rows ignore the spacer's padding.** Rows are absolutely
+positioned, so their containing block is the spacer's padding box: padding on
+`innerClassName` moves nothing, vertically or horizontally. Put list padding on
+a real block wrapper around the list instead. A centred column still works via
+`max-w-*`/`mx-auto` on the spacer, but it leaves no side gutter on a narrow
+window.
+
+**A synchronous Tauri command already runs on the main thread.** AppKit work
+belongs inline in it. Wrapping that work in `run_on_main_thread` and blocking on
+the result deadlocks, because the queue being waited on is the thread doing the
+waiting. `set_window_vibrancy` makes the same assumption.
+
+**Some odd-looking layout is a test-protected invariant.** The inbox message
+action bar deliberately stays inside the first message rather than straddling
+its top edge, and `inbox-reactions.spec.ts` asserts it. Making it consistent
+with the channel timeline broke that test — correctly. Before "fixing"
+placement that looks inconsistent, grep the specs for it; the inconsistency may
+be load-bearing.
+
+**The mock's light theme hides dark-glass defects.** `just desktop-screenshot`
+renders the light theme, where an opaque mask is invisible against an opaque
+page. A screenshot that looks right there says nothing about glass-on dark.
+Ask Faisal for that one; this Mac has no screen-recording permission.
 
 ## SVS-managed agents
 
