@@ -1,4 +1,10 @@
-import { Search } from "lucide-react";
+import {
+  Bot,
+  Heart,
+  MessageCircleDashed,
+  Search,
+  UserPlus,
+} from "lucide-react";
 import * as React from "react";
 
 import {
@@ -47,10 +53,20 @@ type PulseViewProps = {
   currentPubkey?: string;
 };
 
-function EmptyState({ message }: { message: string }) {
+type EmptyStateCopy = {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  /** What the reader can do about it. An empty tab with no next step is a dead end. */
+  hint: string;
+};
+
+function EmptyState({ copy }: { copy: EmptyStateCopy }) {
+  const Icon = copy.icon;
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 px-4 py-12 text-center">
-      <p className="text-sm text-muted-foreground">{message}</p>
+    <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-2 px-4 py-16 text-center">
+      <Icon className="h-8 w-8 text-muted-foreground/35" />
+      <p className="text-sm font-medium text-foreground/80">{copy.title}</p>
+      <p className="text-xs leading-5 text-muted-foreground">{copy.hint}</p>
     </div>
   );
 }
@@ -254,16 +270,44 @@ export function PulseView({ currentPubkey }: PulseViewProps) {
             : myNotesQuery;
   const isLoading = activeQuery.isLoading;
 
-  const emptyMessages: Record<PulseTab, string> = {
-    search: "Search Pulse notes by author or text.",
-    everyone: "No public notes yet.",
-    people: "No notes yet. Follow people to see their updates here.",
-    liked: "No likes yet — tap the heart on a note to save it here.",
+  const emptyMessages: Record<PulseTab, EmptyStateCopy> = {
+    search: {
+      icon: Search,
+      title: "Search Pulse",
+      hint: "Find a note by who wrote it or by what it says.",
+    },
+    everyone: {
+      icon: MessageCircleDashed,
+      title: "No public notes yet",
+      hint: "Notes posted to the whole community land here. Start one above.",
+    },
+    people: {
+      icon: UserPlus,
+      title: "Nothing from the people you follow",
+      hint: "Follow someone and their updates show up here.",
+    },
+    liked: {
+      icon: Heart,
+      title: "Nothing saved yet",
+      hint: "Tap the heart on a note to keep it here.",
+    },
     agents:
       agentPubkeys.length === 0
-        ? "No agents registered yet."
-        : "No agent notes yet. Agents post here when they publish.",
-    mine: "You haven't posted any notes yet.",
+        ? {
+            icon: Bot,
+            title: "No agents registered yet",
+            hint: "Once an agent joins this community its activity shows here.",
+          }
+        : {
+            icon: Bot,
+            title: "No agent notes yet",
+            hint: "Agents post here whenever they publish an update.",
+          },
+    mine: {
+      icon: MessageCircleDashed,
+      title: "You have not posted yet",
+      hint: "Share what you are working on using the box above.",
+    },
   };
 
   function renderTimeline() {
@@ -271,7 +315,7 @@ export function PulseView({ currentPubkey }: PulseViewProps) {
 
     if (activeTab === "agents") {
       return agentNoteGroups.length === 0 ? (
-        <EmptyState message={emptyMessages.agents} />
+        <EmptyState copy={emptyMessages.agents} />
       ) : (
         <VirtualizedList
           estimateSize={160}
@@ -292,7 +336,7 @@ export function PulseView({ currentPubkey }: PulseViewProps) {
     }
 
     return visibleNotes.length === 0 ? (
-      <EmptyState message={emptyMessages[activeTab]} />
+      <EmptyState copy={emptyMessages[activeTab]} />
     ) : (
       <VirtualizedList
         estimateSize={140}
