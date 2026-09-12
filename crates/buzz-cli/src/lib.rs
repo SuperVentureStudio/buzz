@@ -425,6 +425,9 @@ pub enum MessagesCmd {
         /// Event ID to reply to (creates a thread)
         #[arg(long)]
         reply_to: Option<String>,
+        /// Where the thread now stands, e.g. investigating, needs-decision, fixed (forum comments only)
+        #[arg(long)]
+        status: Option<String>,
         /// Also publish to the Nostr network
         #[arg(long, default_value_t = false)]
         broadcast: bool,
