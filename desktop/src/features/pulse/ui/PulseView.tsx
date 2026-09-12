@@ -384,9 +384,7 @@ export function PulseView({ currentPubkey }: PulseViewProps) {
       <div className="mt-0 min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
         <div
           aria-labelledby={pulseTabId(activeTab)}
-          className={`mx-auto flex w-full max-w-2xl flex-col px-4 pb-10 sm:px-6 ${
-            activeTab !== "search" && activeTab !== "agents" ? "pt-0" : "pt-7"
-          }`}
+          className="mx-auto flex w-full max-w-2xl flex-col px-4 pb-10 pt-7 sm:px-6"
           id={pulsePanelId(activeTab)}
           role="tabpanel"
         >
@@ -419,14 +417,12 @@ export function PulseView({ currentPubkey }: PulseViewProps) {
               </div>
             </div>
           ) : activeTab !== "agents" ? (
-            <div className="sticky top-0 z-10 mb-7 pb-3 pt-7">
-              {/* Masks notes scrolling under the sticky composer. Painted with
-                  the composer's own translucent glass rather than an opaque
-                  fill, which read as a black box once the window went clear. */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-[-1px] h-8 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/55"
-              />
+            // The sticky box is exactly the composer. It used to carry its own
+            // top padding and paint a filled strip across it to hide notes
+            // scrolling past — which, over a transparent window, is just a
+            // visible band. The spacing lives on the scrolling panel instead,
+            // so there is nothing above the composer to leak through.
+            <div className="sticky top-0 z-10 mb-10">
               {publishMutation.isError && (
                 <div className="mb-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   {publishMutation.error instanceof Error
