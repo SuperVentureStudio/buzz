@@ -352,32 +352,37 @@ export function ForumView({
             </div>
           </div>
         ) : (
-          <VirtualizedList
-            estimateSize={120}
-            getItemKey={(post) => post.eventId}
-            innerClassName={cn(FORUM_COLUMN, "p-4")}
-            items={posts}
-            renderItem={(post) => (
-              <div className="pb-3">
-                <ForumPostCard
-                  canDelete={canDelete(post.pubkey, effectiveCurrentPubkey)}
-                  currentPubkey={effectiveCurrentPubkey}
-                  isActive={selectedPostId === post.eventId}
-                  isDeleting={
-                    deletePostMutation.isPending &&
-                    deletePostMutation.variables?.eventId === post.eventId
-                  }
-                  onClick={() => onSelectPost(post.eventId)}
-                  onDelete={(eventId) => {
-                    deletePostMutation.mutate({ eventId });
-                  }}
-                  post={post}
-                  profiles={profiles}
-                />
-              </div>
-            )}
-            scrollRef={postsScrollRef}
-          />
+          // Padding lives on this wrapper, not on the virtualizer's spacer:
+          // the rows are absolutely positioned, so they ignore the spacer's
+          // own padding and would sit flush against the composer's divider.
+          <div className="px-4 pt-4">
+            <VirtualizedList
+              estimateSize={120}
+              getItemKey={(post) => post.eventId}
+              innerClassName={FORUM_COLUMN}
+              items={posts}
+              renderItem={(post) => (
+                <div className="pb-3">
+                  <ForumPostCard
+                    canDelete={canDelete(post.pubkey, effectiveCurrentPubkey)}
+                    currentPubkey={effectiveCurrentPubkey}
+                    isActive={selectedPostId === post.eventId}
+                    isDeleting={
+                      deletePostMutation.isPending &&
+                      deletePostMutation.variables?.eventId === post.eventId
+                    }
+                    onClick={() => onSelectPost(post.eventId)}
+                    onDelete={(eventId) => {
+                      deletePostMutation.mutate({ eventId });
+                    }}
+                    post={post}
+                    profiles={profiles}
+                  />
+                </div>
+              )}
+              scrollRef={postsScrollRef}
+            />
+          </div>
         )}
 
         {posts.length > 0 && postsQuery.hasNextPage ? (
