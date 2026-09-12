@@ -693,7 +693,10 @@ function InboxMessageDetailPane({
 
         <div
           aria-busy={isThreadContextLoading}
-          className="-mt-13 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-32 pt-13 [overflow-anchor:none]"
+          // `-mt-13`/`pt-13` let messages scroll under the translucent header;
+          // the extra padding is the resting gap, without which the first
+          // message sits hard against the header's edge.
+          className="-mt-13 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-32 pt-16 [overflow-anchor:none]"
           data-testid="home-inbox-detail-scroll"
           // Selection copy across a rendered mention chip: restores the sigil
           // and the identity sidecar the browser's default copy would drop.

@@ -420,9 +420,12 @@ export function PulseView({ currentPubkey }: PulseViewProps) {
             </div>
           ) : activeTab !== "agents" ? (
             <div className="sticky top-0 z-10 mb-7 pb-3 pt-7">
+              {/* Masks notes scrolling under the sticky composer. Painted with
+                  the composer's own translucent glass rather than an opaque
+                  fill, which read as a black box once the window went clear. */}
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-[-1px] h-8 bg-background"
+                className="pointer-events-none absolute inset-x-0 top-[-1px] h-8 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/55"
               />
               {publishMutation.isError && (
                 <div className="mb-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
