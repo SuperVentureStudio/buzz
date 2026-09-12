@@ -89,10 +89,17 @@ SVS uses `svs` and `svs-dark` as its first-class themes. Historical `buzz` and
 storage keys remain unchanged so existing profiles keep their data. The themes
 reuse GitHub's syntax palette but own SVS's cyan accent and gradient.
 
-The macOS main window is transparent from creation. `ThemeProvider.tsx` installs
-the native material through `set_window_vibrancy` before making the WebView
-transparent; `theme.css` then applies controlled translucent layers to the
-outer chrome, sidebar and primary workspace panes. Glass defaults on for a new
+The macOS main window is transparent from creation. `ThemeProvider.tsx` calls
+`set_window_glass` before making the WebView transparent: that makes the
+`NSWindow` itself transparent and asks the WindowServer to blur what is behind
+it, through the private `CGSSetWindowBackgroundBlurRadius`. `theme.css` then
+applies controlled translucent layers to the outer chrome, sidebar and primary
+workspace panes.
+
+`NSVisualEffectView` (the `window-vibrancy` crate, `set_window_vibrancy`) is the
+fallback for a macOS that no longer exports that symbol. It is not the default
+because each of its materials composites a fixed tint that no CSS opacity above
+it can lift, so the glass could never reach the clear end of the opacity range. Glass defaults on for a new
 SVS profile, while an explicit off preference stays off.
 
 The user preference is stored as `buzz-glass-background`; tint opacity is

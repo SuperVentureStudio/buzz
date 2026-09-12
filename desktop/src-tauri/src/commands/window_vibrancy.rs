@@ -1,4 +1,8 @@
-//! Runtime macOS window vibrancy (blur-behind) toggle.
+//! Runtime macOS window vibrancy (blur-behind) toggle — the glass fallback.
+//!
+//! `window_glass::set_window_glass` is the default path. This one runs only
+//! when the private WindowServer blur symbol is unavailable, because an
+//! `NSVisualEffectView` material carries a fixed tint that CSS cannot lift.
 //!
 //! The main window is transparent from creation so macOS can composite its
 //! material behind SVS's outer chrome. Glass-off CSS paints the full web

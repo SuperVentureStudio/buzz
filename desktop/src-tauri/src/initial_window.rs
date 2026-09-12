@@ -16,10 +16,11 @@ pub(crate) fn reveal_initial_window<R: tauri::Runtime>(window: &tauri::Window<R>
 #[cfg(target_os = "macos")]
 pub(crate) fn set_initial_window_backing<R: tauri::Runtime>(window: &tauri::Window<R>) {
     // Both this write and the deferred clear target the Window (NSWindow)
-    // backing color only; they never touch the webview canvas or the
-    // NSVisualEffectView, so they are not load-bearing for glass. Glass state
-    // — the effect view and webview-canvas transparency — is managed entirely
-    // by `set_window_vibrancy`, which the ThemeProvider calls after mount. The
+    // backing color only; they never touch the webview canvas or the window's
+    // opacity, so they are not load-bearing for glass. Glass state — window
+    // transparency, the WindowServer blur, and webview-canvas transparency —
+    // is managed entirely by `set_window_glass`, which the ThemeProvider
+    // calls after mount. The
     // 250ms-delayed clear cannot clobber a persisted-glass-on cold boot
     // regardless of ordering with that call.
     //
