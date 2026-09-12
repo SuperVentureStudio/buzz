@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { getForumPosts, getForumThread } from "@/shared/api/forum";
 import { useFocusedRefetchInterval } from "@/shared/lib/useDocumentVisible";
@@ -33,6 +38,9 @@ export function forumThreadQueryKey(channelId: string, eventId: string) {
   return ["forum-thread", channelId, eventId] as const;
 }
 
+/** Posts per page. The relay returns a `before` cursor once a full page is served. */
+export const FORUM_POSTS_PAGE_SIZE = 50;
+
 export function useForumPostsQuery(channel: Channel | null) {
   const refetchInterval = useFocusedRefetchInterval(
     FORUM_POSTS_REFETCH_INTERVAL_MS,
@@ -42,10 +50,28 @@ export function useForumPostsQuery(channel: Channel | null) {
   const enabled = channel !== null && channel.channelType === "forum";
   const relaySelfPubkey = useRelaySelfQuery(enabled).data;
 
-  return useQuery<ForumPostsResponse>({
+  // Paged rather than a single 50-post read: a busy forum passes 50 posts and
+  // the rest were silently unreachable. Polling refetches every loaded page,
+  // so a forum the user has paged deep into stays current.
+  return useInfiniteQuery<
+    ForumPostsResponse,
+    Error,
+    ForumPostsResponse[],
+    readonly unknown[],
+    number | undefined
+  >({
     enabled,
     queryKey: [...forumPostsQueryKey(channelId), relaySelfPubkey ?? null],
-    queryFn: () => getForumPosts(channelId, 50, undefined, relaySelfPubkey),
+    queryFn: ({ pageParam }) =>
+      getForumPosts(
+        channelId,
+        FORUM_POSTS_PAGE_SIZE,
+        pageParam,
+        relaySelfPubkey,
+      ),
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    select: (data) => data.pages,
     refetchInterval,
     ...forumFocusRefetchPolicy,
   });

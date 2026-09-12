@@ -1,4 +1,4 @@
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { AlertCircle, ArrowLeft, MessageSquare } from "lucide-react";
 import * as React from "react";
 
 import { handleTimelineMentionCopy } from "@/features/messages/lib/timelineMentionCopy";
@@ -19,6 +19,7 @@ import { Markdown } from "@/shared/ui/markdown";
 import { hasLinkPreviewSuppression } from "@/features/messages/lib/formatTimelineMessages";
 import { Skeleton } from "@/shared/ui/skeleton";
 
+import { splitForumPostContent } from "../lib/postTitle";
 import { formatRelativeTime } from "../lib/time";
 import { DeleteActionMenu } from "./DeleteActionMenu";
 import { ForumComposer } from "./ForumComposer";
@@ -26,6 +27,9 @@ import { ForumComposer } from "./ForumComposer";
 type ForumThreadPanelProps = {
   thread: ForumThreadResponse | undefined;
   isLoading: boolean;
+  /** Set when the thread read failed — shown instead of an endless skeleton. */
+  loadError?: Error | null;
+  onRetry?: () => void;
   isSendingReply: boolean;
   channelId: string;
   postId: string;
@@ -145,6 +149,8 @@ function ReplyRow({
 export function ForumThreadPanel({
   thread,
   isLoading,
+  loadError,
+  onRetry,
   isSendingReply,
   channelId,
   postId,
@@ -185,19 +191,54 @@ export function ForumThreadPanel({
     onTargetReached?.(targetEventId);
   }, [onTargetReached, targetEventId, thread]);
 
-  if (isLoading || !thread) {
+  if (!thread && loadError) {
     return (
       <div className={cn("flex h-full flex-col", channelChrome.contentPadding)}>
-        <div className="border-b border-border/60 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
           <Button
-            className="gap-1.5 text-muted-foreground"
+            aria-label="Back to posts"
+            className="shrink-0 text-muted-foreground"
             onClick={onBack}
-            size="sm"
+            size="icon"
             variant="ghost"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to posts
           </Button>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground/40" />
+          <div>
+            <p className="text-sm font-medium text-foreground/70">
+              Could not load this post
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {loadError.message}
+            </p>
+          </div>
+          {onRetry ? (
+            <Button onClick={onRetry} size="sm" variant="outline">
+              Try again
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !thread) {
+    return (
+      <div className={cn("flex h-full flex-col", channelChrome.contentPadding)}>
+        <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
+          <Button
+            aria-label="Back to posts"
+            className="shrink-0 text-muted-foreground"
+            onClick={onBack}
+            size="icon"
+            variant="ghost"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Skeleton className="h-4 w-48" />
         </div>
         <div className="flex-1 space-y-4 p-4">
           <Skeleton className="h-8 w-3/4" />
@@ -223,19 +264,31 @@ export function ForumThreadPanel({
     profiles?.[post.pubkey.toLowerCase()]?.avatarUrl ?? null;
   const postAuthorIsAgent =
     profiles?.[post.pubkey.toLowerCase()]?.isAgent === true;
+  // The header names the thread you are inside, the way the post list named
+  // it. The post itself still renders whole below — the header is chrome, not
+  // a second copy of the content.
+  const postSearchQuery =
+    targetSearchMessageId === post.eventId ? targetSearchQuery : undefined;
+  const { title: postTitle } = splitForumPostContent(post.content);
 
   return (
     <div className={cn("flex h-full flex-col", channelChrome.contentPadding)}>
-      <div className="border-b border-border/60 px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
         <Button
-          className="gap-1.5 text-muted-foreground"
+          aria-label="Back to posts"
+          className="shrink-0 text-muted-foreground"
           onClick={onBack}
-          size="sm"
+          size="icon"
           variant="ghost"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to posts
         </Button>
+        <p
+          className="min-w-0 flex-1 truncate text-sm font-medium text-muted-foreground"
+          title={postTitle ?? undefined}
+        >
+          {postTitle ?? `Post by ${postAuthorLabel}`}
+        </p>
       </div>
 
       <div
@@ -293,11 +346,7 @@ export function ForumThreadPanel({
               imetaByUrl={parseImetaTags(post.tags)}
               mentionNames={postMentionNames}
               mentionPubkeysByName={postMentionPubkeysByName}
-              searchQuery={
-                targetSearchMessageId === post.eventId
-                  ? targetSearchQuery
-                  : undefined
-              }
+              searchQuery={postSearchQuery}
             />
           </div>
         </div>

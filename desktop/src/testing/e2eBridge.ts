@@ -5329,33 +5329,40 @@ async function handleGetForumPosts(args: {
   before?: number | null;
 }): Promise<RawForumPostsResponse> {
   const events = getMockMessageStore(args.channelId);
-  const posts = events
+  const limit = args.limit ?? 50;
+  const matching = events
     .filter((event) => event.kind === 45001)
     .filter((event) => (args.before ? event.created_at < args.before : true))
-    .sort((left, right) => right.created_at - left.created_at)
-    .slice(0, args.limit ?? 50)
-    .map((event) => {
-      const replies = events.filter((candidate) => {
-        if (candidate.kind !== 45003) {
-          return false;
-        }
+    .sort((left, right) => right.created_at - left.created_at);
+  const pageEvents = matching.slice(0, limit);
+  const posts = pageEvents.map((event) => {
+    const replies = events.filter((candidate) => {
+      if (candidate.kind !== 45003) {
+        return false;
+      }
 
-        const thread = getThreadReferenceFromTags(candidate.tags);
-        return (thread.rootEventId ?? thread.parentEventId) === event.id;
-      });
-
-      return toRawForumPost(event, args.channelId, {
-        reply_count: replies.length,
-        descendant_count: replies.length,
-        last_reply_at:
-          replies.length > 0 ? replies[replies.length - 1].created_at : null,
-        participants: [...new Set(replies.map((reply) => reply.pubkey))],
-      });
+      const thread = getThreadReferenceFromTags(candidate.tags);
+      return (thread.rootEventId ?? thread.parentEventId) === event.id;
     });
 
+    return toRawForumPost(event, args.channelId, {
+      reply_count: replies.length,
+      descendant_count: replies.length,
+      last_reply_at:
+        replies.length > 0 ? replies[replies.length - 1].created_at : null,
+      participants: [...new Set(replies.map((reply) => reply.pubkey))],
+    });
+  });
+
+  // Mirror the relay's keyset paging: a full page hands back the oldest post's
+  // timestamp as the exclusive `before` cursor for the next read.
+  const hasMore = matching.length > pageEvents.length;
   return {
     messages: posts,
-    next_cursor: null,
+    next_cursor:
+      hasMore && pageEvents.length > 0
+        ? pageEvents[pageEvents.length - 1].created_at
+        : null,
   };
 }
 
