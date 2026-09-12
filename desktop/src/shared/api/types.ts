@@ -822,6 +822,8 @@ export type ThreadSummary = {
   descendantCount: number;
   lastReplyAt: number | null;
   participants: string[];
+  /** Newest status anyone set on the thread; null until someone sets one. */
+  status: string | null;
 };
 
 export type ForumPost = {

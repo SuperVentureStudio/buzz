@@ -60,6 +60,7 @@ pub(super) fn forum_message_from_event(event: &nostr::Event, channel_id: &str) -
             descendant_count: 0,
             last_reply_at: None,
             participants: Vec::new(),
+            status: None,
         }),
         reactions: serde_json::Value::Null,
     }
@@ -154,6 +155,82 @@ pub(super) fn apply_link_preview_suppression(
     }
 }
 
+/// Resolve the root a reply belongs to, preferring an explicit "root" marker.
+fn reply_root(event: &nostr::Event, roots: &std::collections::HashSet<String>) -> Option<String> {
+    let mut fallback = None;
+    for tag in event.tags.iter() {
+        let values = tag.as_slice();
+        if values.len() < 2 || values[0] != "e" {
+            continue;
+        }
+        if values.get(3).map(String::as_str) == Some("root") && roots.contains(&values[1]) {
+            return Some(values[1].clone());
+        }
+        if fallback.is_none() && roots.contains(&values[1]) {
+            fallback = Some(values[1].clone());
+        }
+    }
+    fallback
+}
+
+/// What a list of posts needs to say about each thread without opening it.
+///
+/// The forum list used to report every post as having no replies, because this
+/// summary was built from the root event alone and the root cannot know what
+/// came after it. One extra filter reads the thread's replies, which is also
+/// the only place a status can live: a root event is immutable, so the state of
+/// the work it describes has to be carried by the newest reply that declares
+/// one.
+fn summarize_threads(
+    root_ids: &[String],
+    replies: &[nostr::Event],
+) -> std::collections::HashMap<String, ThreadSummary> {
+    let roots = root_ids.iter().cloned().collect::<std::collections::HashSet<_>>();
+    let mut summaries: std::collections::HashMap<String, ThreadSummary> = std::collections::HashMap::new();
+    let mut status_at: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+
+    let mut ordered = replies.iter().collect::<Vec<_>>();
+    ordered.sort_by_key(|event| event.created_at.as_secs());
+
+    for event in ordered {
+        let Some(root) = reply_root(event, &roots) else {
+            continue;
+        };
+        let created_at = event.created_at.as_secs() as i64;
+        let summary = summaries.entry(root.clone()).or_insert_with(|| ThreadSummary {
+            reply_count: 0,
+            descendant_count: 0,
+            last_reply_at: None,
+            participants: Vec::new(),
+            status: None,
+        });
+        summary.descendant_count += 1;
+        let direct = event.tags.iter().all(|tag| {
+            let values = tag.as_slice();
+            values.len() < 2 || values[0] != "e" || values.get(3).map(String::as_str) != Some("reply")
+                || values[1] == root
+        });
+        if direct {
+            summary.reply_count += 1;
+        }
+        summary.last_reply_at = Some(created_at);
+        let author = event.pubkey.to_hex();
+        if !summary.participants.contains(&author) {
+            summary.participants.push(author);
+        }
+        for tag in event.tags.iter() {
+            let values = tag.as_slice();
+            if values.len() >= 2 && values[0] == "status" && !values[1].trim().is_empty() {
+                if status_at.get(&root).is_none_or(|seen| created_at >= *seen) {
+                    status_at.insert(root.clone(), created_at);
+                    summary.status = Some(values[1].trim().to_string());
+                }
+            }
+        }
+    }
+    summaries
+}
+
 #[tauri::command]
 pub async fn get_forum_posts(
     channel_id: String,
@@ -185,13 +262,31 @@ pub async fn get_forum_posts(
         .await
         .unwrap_or_default()
     };
+    let replies = if ids.is_empty() {
+        Vec::new()
+    } else {
+        query_relay(
+            &state,
+            &[serde_json::json!({
+                "kinds": [9, 45003],
+                "#e": ids,
+                "#h": [channel_id.clone()],
+            })],
+        )
+        .await
+        .unwrap_or_default()
+    };
     let owner_pubkeys = fetch_agent_owner_pubkeys(&state, &events).await;
     let suppressed = link_preview_suppression_targets(&events, &edits, &owner_pubkeys);
+    let mut summaries = summarize_threads(&ids, &replies);
     let messages: Vec<ForumMessageInfo> = events
         .iter()
         .map(|ev| {
             let mut message = forum_message_from_event(ev, &channel_id);
             apply_link_preview_suppression(&mut message.tags, &message.event_id, &suppressed);
+            if let Some(summary) = summaries.remove(&message.event_id) {
+                message.thread_summary = Some(summary);
+            }
             message
         })
         .collect();
@@ -258,7 +353,18 @@ pub async fn get_forum_thread(
     }
     let total_replies = replies.len() as u32;
 
-    let root = root.ok_or_else(|| "forum thread root event not found".to_string())?;
+    let mut root = root.ok_or_else(|| "forum thread root event not found".to_string())?;
+    // The open thread reads its status the same way the list does, so the chip
+    // in the header and the chip on the card can never disagree.
+    let root_ids = vec![event_id.clone()];
+    let thread_replies = events
+        .iter()
+        .filter(|ev| ev.id.to_hex() != event_id && ev.kind.as_u16() as u32 != 40003)
+        .cloned()
+        .collect::<Vec<_>>();
+    if let Some(summary) = summarize_threads(&root_ids, &thread_replies).remove(&event_id) {
+        root.thread_summary = Some(summary);
+    }
     Ok(ForumThreadResponse {
         root,
         replies,
@@ -282,6 +388,53 @@ mod tests {
             .tags(tags)
             .sign_with_keys(keys)
             .expect("event signs")
+    }
+
+    fn reply(keys: &Keys, root: &str, at: u64, tags: Vec<Vec<String>>) -> nostr::Event {
+        let mut all = vec![vec!["e".to_string(), root.to_string(), String::new(), "root".to_string()]];
+        all.extend(tags);
+        let parsed = all
+            .into_iter()
+            .map(nostr::Tag::parse)
+            .collect::<Result<Vec<_>, _>>()
+            .expect("valid tags");
+        EventBuilder::new(Kind::Custom(45003), "body")
+            .tags(parsed)
+            .custom_created_at(nostr::Timestamp::from(at))
+            .sign_with_keys(keys)
+            .expect("event signs")
+    }
+
+    #[test]
+    fn thread_summary_counts_replies_and_keeps_the_newest_status() {
+        let engineer = Keys::generate();
+        let owner = Keys::generate();
+        let root = "a".repeat(64);
+        let replies = vec![
+            reply(&engineer, &root, 100, vec![vec!["status".to_string(), "investigating".to_string()]]),
+            reply(&owner, &root, 200, vec![]),
+            reply(&engineer, &root, 300, vec![vec!["status".to_string(), "fixed".to_string()]]),
+            reply(&engineer, &"b".repeat(64), 400, vec![]),
+        ];
+
+        let summaries = summarize_threads(std::slice::from_ref(&root), &replies);
+        let summary = summaries.get(&root).expect("thread summarised");
+
+        assert_eq!(summary.reply_count, 3);
+        assert_eq!(summary.last_reply_at, Some(300));
+        assert_eq!(summary.participants.len(), 2);
+        assert_eq!(summary.status.as_deref(), Some("fixed"));
+    }
+
+    #[test]
+    fn thread_summary_leaves_status_unset_until_someone_sets_one() {
+        let author = Keys::generate();
+        let root = "c".repeat(64);
+        let replies = vec![reply(&author, &root, 10, vec![vec!["status".to_string(), "   ".to_string()]])];
+
+        let summaries = summarize_threads(std::slice::from_ref(&root), &replies);
+
+        assert_eq!(summaries.get(&root).expect("summarised").status, None);
     }
 
     #[test]

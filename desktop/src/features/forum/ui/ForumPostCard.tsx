@@ -17,6 +17,7 @@ import { parseImetaTags } from "@/shared/ui/markdown/parseImeta";
 
 import { splitForumPostContent } from "../lib/postTitle";
 import { formatRelativeTime } from "../lib/time";
+import { ForumStatusBadge } from "./ForumStatusBadge";
 import { DeleteActionMenu } from "./DeleteActionMenu";
 
 const PREVIEW_LENGTH = 200;
@@ -92,10 +93,15 @@ export function ForumPostCard({
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           {title ? (
-            <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground">
-              {title}
-            </h3>
-          ) : null}
+            <div className="flex items-start gap-2">
+              <h3 className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-6 text-foreground">
+                {title}
+              </h3>
+              <ForumStatusBadge className="mt-0.5" status={summary?.status} />
+            </div>
+          ) : (
+            <ForumStatusBadge className="mb-1.5" status={summary?.status} />
+          )}
           {previewContent ? (
             <Markdown
               className={cn(
