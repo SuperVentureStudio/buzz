@@ -77,7 +77,7 @@ export function ForumPostCard({
       role="button"
       tabIndex={0}
       className={cn(
-        "group w-full cursor-pointer rounded-xl border border-border/60 bg-card p-4 text-left transition-colors hover:border-border hover:bg-accent/40",
+        "group w-full cursor-pointer rounded-xl border border-border/60 bg-card p-4 text-left transition-colors hover:border-border/90 hover:bg-accent/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         isActive && "border-primary/40 bg-accent/60",
         isDeleting && "pointer-events-none opacity-50",
       )}
@@ -92,13 +92,16 @@ export function ForumPostCard({
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           {title ? (
-            <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+            <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground">
               {title}
             </h3>
           ) : null}
           {previewContent ? (
             <Markdown
-              className={cn("text-sm", title && "mt-1 text-muted-foreground")}
+              className={cn(
+                "text-sm leading-6",
+                title && "mt-1.5 text-muted-foreground",
+              )}
               content={previewContent}
               messageId={post.eventId}
               linkPreviewsSuppressed={hasLinkPreviewSuppression(post.tags)}
@@ -125,7 +128,7 @@ export function ForumPostCard({
         ) : null}
       </div>
 
-      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="mt-3.5 flex items-center gap-2 border-t border-border/40 pt-3 text-xs text-muted-foreground">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: presentation wrapper stops click propagation to parent card */}
         <div
           className="min-w-0"

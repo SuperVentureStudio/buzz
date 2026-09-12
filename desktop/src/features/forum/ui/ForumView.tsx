@@ -1,6 +1,7 @@
 import { AlertCircle, MessageSquareText } from "lucide-react";
 import * as React from "react";
 
+import { useAppShell } from "@/app/AppShellContext";
 import { handleTimelineMentionCopy } from "@/features/messages/lib/timelineMentionCopy";
 import { useProfileQuery, useUsersBatchQuery } from "@/features/profile/hooks";
 import { mergeCurrentProfileIntoLookup } from "@/features/profile/lib/identity";
@@ -41,6 +42,13 @@ type ForumViewProps = {
   targetSearchQuery?: string;
 };
 
+/**
+ * Posts are read, not skimmed sideways. Left to fill the pane, a line of body
+ * text runs past 1,800px on a wide display, which is unreadable — so the
+ * composer, the list and the load control share one centred reading column.
+ */
+const FORUM_COLUMN = "mx-auto w-full max-w-4xl";
+
 /** Title drafts persist beside the body draft the composer already keeps. */
 function titleDraftKey(channelId: string): string {
   return `buzz-forum-post-title:${channelId}`;
@@ -69,6 +77,7 @@ export function ForumView({
   const postsScrollRef = React.useRef<HTMLDivElement>(null);
   const titleInputRef = React.useRef<HTMLInputElement>(null);
 
+  const { markThreadRead } = useAppShell();
   const profileQuery = useProfileQuery();
   const postsQuery = useForumPostsQuery(channel);
   const threadQuery = useForumThreadQuery(
@@ -145,6 +154,19 @@ export function ForumView({
     setIsComposerOpen(false);
     setTitle("");
   }, [channel.id]);
+
+  // Reading a thread is the only thing that clears its replies. The channel
+  // marker covers posts, not replies, so without this an answered ticket stays
+  // bold and dotted in the sidebar forever.
+  const openThread = selectedPostId ? threadQuery.data : undefined;
+  React.useEffect(() => {
+    if (!selectedPostId || !openThread) return;
+    const newestSeen = openThread.replies.reduce(
+      (latest, reply) => Math.max(latest, reply.createdAt),
+      openThread.post.createdAt,
+    );
+    markThreadRead(selectedPostId, newestSeen);
+  }, [markThreadRead, openThread, selectedPostId]);
 
   React.useEffect(() => {
     if (!isComposerOpen) return;
@@ -223,62 +245,64 @@ export function ForumView({
   return (
     <div className={cn("flex h-full flex-col", channelChrome.contentPadding)}>
       <div className="border-b border-border/60 p-4">
-        {isComposerOpen ? (
-          <ForumComposer
-            autocompleteBelow
-            channelId={channel.id}
-            channelType="forum"
-            draftKey={`forum:${channel.id}`}
-            header={
-              <input
-                aria-label="Post title"
-                className="w-full min-w-0 border-0 bg-transparent p-0 text-sm font-semibold text-foreground outline-hidden placeholder:font-normal placeholder:text-muted-foreground"
-                data-testid="forum-post-title"
-                onChange={(event) => setTitle(event.target.value)}
-                onKeyDown={(event) => {
-                  // Enter in a bare input submits the surrounding form, which
-                  // would post a title with no body. Move to the editor instead.
-                  if (event.key !== "Enter") return;
-                  event.preventDefault();
-                  event.currentTarget
-                    .closest("form")
-                    ?.querySelector<HTMLElement>('[contenteditable="true"]')
-                    ?.focus();
-                }}
-                placeholder="Title"
-                ref={titleInputRef}
-                value={title}
-              />
-            }
-            isSending={createPostMutation.isPending}
-            onCancel={() => closeComposer({ keepDraft: true })}
-            onSubmit={async (content, mentionPubkeys, mediaTags) => {
-              const headline = title.trim();
-              await createPostMutation.mutateAsync({
-                content: headline ? `${headline}\n\n${content}` : content,
-                mentionPubkeys,
-                mediaTags,
-              });
-              closeComposer();
-            }}
-            placeholder="Write your post..."
-            profiles={profiles}
-          />
-        ) : (
-          <button
-            className="w-full rounded-xl border border-dashed border-border/80 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-border hover:bg-accent/30 hover:text-foreground"
-            data-testid="forum-new-post"
-            disabled={!channel.isMember || channel.archivedAt !== null}
-            onClick={openComposer}
-            type="button"
-          >
-            {channel.archivedAt
-              ? "This forum is archived."
-              : !channel.isMember
-                ? "Join this forum to create posts."
-                : "Start a new post..."}
-          </button>
-        )}
+        <div className={FORUM_COLUMN}>
+          {isComposerOpen ? (
+            <ForumComposer
+              autocompleteBelow
+              channelId={channel.id}
+              channelType="forum"
+              draftKey={`forum:${channel.id}`}
+              header={
+                <input
+                  aria-label="Post title"
+                  className="w-full min-w-0 border-0 bg-transparent p-0 text-sm font-semibold text-foreground outline-hidden placeholder:font-normal placeholder:text-muted-foreground"
+                  data-testid="forum-post-title"
+                  onChange={(event) => setTitle(event.target.value)}
+                  onKeyDown={(event) => {
+                    // Enter in a bare input submits the surrounding form, which
+                    // would post a title with no body. Move to the editor instead.
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    event.currentTarget
+                      .closest("form")
+                      ?.querySelector<HTMLElement>('[contenteditable="true"]')
+                      ?.focus();
+                  }}
+                  placeholder="Title"
+                  ref={titleInputRef}
+                  value={title}
+                />
+              }
+              isSending={createPostMutation.isPending}
+              onCancel={() => closeComposer({ keepDraft: true })}
+              onSubmit={async (content, mentionPubkeys, mediaTags) => {
+                const headline = title.trim();
+                await createPostMutation.mutateAsync({
+                  content: headline ? `${headline}\n\n${content}` : content,
+                  mentionPubkeys,
+                  mediaTags,
+                });
+                closeComposer();
+              }}
+              placeholder="Write your post..."
+              profiles={profiles}
+            />
+          ) : (
+            <button
+              className="w-full rounded-xl border border-dashed border-border/80 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-border hover:bg-accent/30 hover:text-foreground"
+              data-testid="forum-new-post"
+              disabled={!channel.isMember || channel.archivedAt !== null}
+              onClick={openComposer}
+              type="button"
+            >
+              {channel.archivedAt
+                ? "This forum is archived."
+                : !channel.isMember
+                  ? "Join this forum to create posts."
+                  : "Start a new post..."}
+            </button>
+          )}
+        </div>
       </div>
 
       <div
@@ -331,7 +355,7 @@ export function ForumView({
           <VirtualizedList
             estimateSize={120}
             getItemKey={(post) => post.eventId}
-            innerClassName="p-4"
+            innerClassName={cn(FORUM_COLUMN, "p-4")}
             items={posts}
             renderItem={(post) => (
               <div className="pb-3">
@@ -357,7 +381,7 @@ export function ForumView({
         )}
 
         {posts.length > 0 && postsQuery.hasNextPage ? (
-          <div className="flex justify-center px-4 pb-6">
+          <div className={cn(FORUM_COLUMN, "flex justify-center px-4 pb-6")}>
             <Button
               disabled={postsQuery.isFetchingNextPage}
               onClick={() => void postsQuery.fetchNextPage()}

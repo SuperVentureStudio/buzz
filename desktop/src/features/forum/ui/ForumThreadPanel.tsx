@@ -299,7 +299,7 @@ export function ForumThreadPanel({
       >
         <div
           className={cn(
-            "group border-b border-border/60 p-4",
+            "group mx-auto w-full max-w-4xl border-b border-border/60 p-4",
             isDeletingPost && "pointer-events-none opacity-50",
           )}
           data-forum-event-id={post.eventId}
@@ -351,12 +351,12 @@ export function ForumThreadPanel({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 border-b border-border/60 px-4 py-2.5 text-sm font-medium text-muted-foreground">
+        <div className="mx-auto flex w-full max-w-4xl items-center gap-1.5 border-b border-border/60 px-4 py-2.5 text-sm font-medium text-muted-foreground">
           <MessageSquare className="h-4 w-4" />
           {replies.length} {replies.length === 1 ? "reply" : "replies"}
         </div>
 
-        <div className="divide-y divide-border/40">
+        <div className="mx-auto w-full max-w-4xl divide-y divide-border/40">
           {replies.map((reply) => (
             <ReplyRow
               channelNames={channelNames}
@@ -382,15 +382,17 @@ export function ForumThreadPanel({
       </div>
 
       <div className="border-t border-border/60 p-4">
-        <ForumComposer
-          channelId={channelId}
-          channelType="forum"
-          draftKey={`thread:${postId}`}
-          isSending={isSendingReply}
-          onSubmit={onReply}
-          placeholder="Reply to this post..."
-          profiles={profiles}
-        />
+        <div className="mx-auto w-full max-w-4xl">
+          <ForumComposer
+            channelId={channelId}
+            channelType="forum"
+            draftKey={`thread:${postId}`}
+            isSending={isSendingReply}
+            onSubmit={onReply}
+            placeholder="Reply to this post..."
+            profiles={profiles}
+          />
+        </div>
       </div>
     </div>
   );
