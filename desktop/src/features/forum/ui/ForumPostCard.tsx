@@ -6,6 +6,7 @@ import {
   type UserProfileLookup,
 } from "@/features/profile/lib/identity";
 import { UserProfilePopover } from "@/features/profile/ui/UserProfilePopover";
+import { ProjectEntityFacepile } from "@/features/projects/ui/ProjectEntityListRow";
 import { UserAvatar } from "@/shared/ui/UserAvatar";
 import type { ForumPost } from "@/shared/api/types";
 import { cn } from "@/shared/lib/cn";
@@ -14,8 +15,11 @@ import { Markdown } from "@/shared/ui/markdown";
 import { hasLinkPreviewSuppression } from "@/features/messages/lib/formatTimelineMessages";
 import { parseImetaTags } from "@/shared/ui/markdown/parseImeta";
 
+import { splitForumPostContent } from "../lib/postTitle";
 import { formatRelativeTime } from "../lib/time";
 import { DeleteActionMenu } from "./DeleteActionMenu";
+
+const PREVIEW_LENGTH = 200;
 
 type ForumPostCardProps = {
   post: ForumPost;
@@ -59,10 +63,13 @@ export function ForumPostCard({
   // the browser never fires `click` and a file download is silently dropped.
   const imetaByUrl = useMemo(() => parseImetaTags(post.tags), [post.tags]);
   const summary = post.threadSummary;
+  const replyCount = summary?.replyCount ?? 0;
+  const { title, body } = useMemo(
+    () => splitForumPostContent(post.content),
+    [post.content],
+  );
   const previewContent =
-    post.content.length > 200
-      ? `${post.content.slice(0, 200)}...`
-      : post.content;
+    body.length > PREVIEW_LENGTH ? `${body.slice(0, PREVIEW_LENGTH)}...` : body;
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: Cannot use <button> because DeleteActionMenu renders a nested <button> via DropdownMenuTrigger, which is invalid HTML
@@ -82,38 +89,31 @@ export function ForumPostCard({
         }
       }}
     >
-      <div className="flex items-center gap-2">
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: presentation wrapper stops click propagation to parent card */}
-        <div onClick={(e) => e.stopPropagation()} role="presentation">
-          <UserProfilePopover
-            pubkey={post.pubkey}
-            role={authorIsAgent ? "bot" : undefined}
-          >
-            <button
-              className="flex items-center gap-2 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              type="button"
-            >
-              <UserAvatar
-                accent={authorIsAgent}
-                avatarUrl={avatarUrl}
-                displayName={authorLabel}
-                shape={authorIsAgent ? "squircle" : "circle"}
-                size="sm"
-              />
-              <span className="truncate text-sm font-medium text-foreground hover:underline">
-                {authorLabel}
-              </span>
-            </button>
-          </UserProfilePopover>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          {title ? (
+            <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
+              {title}
+            </h3>
+          ) : null}
+          {previewContent ? (
+            <Markdown
+              className={cn("text-sm", title && "mt-1 text-muted-foreground")}
+              content={previewContent}
+              messageId={post.eventId}
+              linkPreviewsSuppressed={hasLinkPreviewSuppression(post.tags)}
+              linkPreviewTags={post.tags}
+              imetaByUrl={imetaByUrl}
+              mentionNames={mentionNames}
+              mentionPubkeysByName={mentionPubkeysByName}
+            />
+          ) : null}
         </div>
-        <span className="text-xs text-muted-foreground">
-          {formatRelativeTime(post.createdAt)}
-        </span>
 
         {canDelete && onDelete ? (
           // biome-ignore lint/a11y/noStaticElementInteractions: presentation wrapper only stops click propagation to parent card link
           <div
-            className="ml-auto"
+            className="-mr-1 -mt-1 shrink-0"
             onClick={(e) => e.stopPropagation()}
             role="presentation"
           >
@@ -125,34 +125,64 @@ export function ForumPostCard({
         ) : null}
       </div>
 
-      <div className="mt-2">
-        <Markdown
-          className="text-sm"
-          content={previewContent}
-          messageId={post.eventId}
-          linkPreviewsSuppressed={hasLinkPreviewSuppression(post.tags)}
-          linkPreviewTags={post.tags}
-          imetaByUrl={imetaByUrl}
-          mentionNames={mentionNames}
-          mentionPubkeysByName={mentionPubkeysByName}
-        />
-      </div>
-
-      {summary && summary.replyCount > 0 ? (
-        <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MessageSquare className="h-4 w-4" />
-          <span>
-            {summary.replyCount}{" "}
-            {summary.replyCount === 1 ? "reply" : "replies"}
-          </span>
-          {summary.lastReplyAt ? (
-            <>
-              <span className="text-muted-foreground/50">·</span>
-              <span>last {formatRelativeTime(summary.lastReplyAt)}</span>
-            </>
-          ) : null}
+      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: presentation wrapper stops click propagation to parent card */}
+        <div
+          className="min-w-0"
+          onClick={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <UserProfilePopover
+            pubkey={post.pubkey}
+            role={authorIsAgent ? "bot" : undefined}
+          >
+            <button
+              className="flex min-w-0 items-center gap-1.5 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              type="button"
+            >
+              <UserAvatar
+                accent={authorIsAgent}
+                avatarUrl={avatarUrl}
+                displayName={authorLabel}
+                shape={authorIsAgent ? "squircle" : "circle"}
+                size="xs"
+              />
+              <span className="truncate font-medium text-foreground/80 hover:underline">
+                {authorLabel}
+              </span>
+            </button>
+          </UserProfilePopover>
         </div>
-      ) : null}
+        <span aria-hidden className="text-muted-foreground/40">
+          ·
+        </span>
+        <span className="shrink-0">{formatRelativeTime(post.createdAt)}</span>
+
+        <span className="ml-auto flex shrink-0 items-center gap-2.5">
+          {replyCount > 0 && summary ? (
+            <ProjectEntityFacepile
+              participants={summary.participants}
+              profiles={profiles}
+            />
+          ) : null}
+          <span className="flex items-center gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>
+              {replyCount === 0
+                ? "No replies"
+                : `${replyCount} ${replyCount === 1 ? "reply" : "replies"}`}
+            </span>
+            {summary?.lastReplyAt ? (
+              <>
+                <span aria-hidden className="text-muted-foreground/40">
+                  ·
+                </span>
+                <span>last {formatRelativeTime(summary.lastReplyAt)}</span>
+              </>
+            ) : null}
+          </span>
+        </span>
+      </div>
     </div>
   );
 }

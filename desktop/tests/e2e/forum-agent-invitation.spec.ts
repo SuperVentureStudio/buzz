@@ -387,10 +387,14 @@ for (const stage of ["add", "publish"] as const) {
           },
           { forum: FORUM, id: roots[index] },
         );
+        // Scoped to the post body: the thread header also shows the post's
+        // first line as its title, so an unscoped text match is ambiguous.
         await expect(
-          page.getByText(index === 0 ? "Source forum A" : "Source forum B", {
-            exact: true,
-          }),
+          page
+            .locator(`[data-forum-event-id="${roots[index]}"]`)
+            .getByText(index === 0 ? "Source forum A" : "Source forum B", {
+              exact: true,
+            }),
         ).toBeVisible();
         await expect(page.getByTestId("message-input")).toHaveAttribute(
           "contenteditable",
@@ -548,10 +552,14 @@ for (const replacement of [null, "new A draft", ""] as const) {
         },
         { forum: FORUM, id: roots[index] },
       );
+      // Scoped to the post body: the thread header also shows the post's
+      // first line as its title, so an unscoped text match is ambiguous.
       await expect(
-        page.getByText(index === 0 ? "Transport A" : "Transport B", {
-          exact: true,
-        }),
+        page
+          .locator(`[data-forum-event-id="${roots[index]}"]`)
+          .getByText(index === 0 ? "Transport A" : "Transport B", {
+            exact: true,
+          }),
       ).toBeVisible();
       await expect(page.getByTestId("message-input")).toHaveAttribute(
         "contenteditable",

@@ -1,4 +1,4 @@
-import { MessageSquareText } from "lucide-react";
+import { AlertCircle, MessageSquareText } from "lucide-react";
 import * as React from "react";
 
 import { handleTimelineMentionCopy } from "@/features/messages/lib/timelineMentionCopy";
@@ -8,6 +8,12 @@ import { getMentionTagPubkey } from "@/shared/lib/resolveMentionNames";
 import type { Channel } from "@/shared/api/types";
 import { channelChrome } from "@/shared/layout/chromeLayout";
 import { cn } from "@/shared/lib/cn";
+import {
+  getStorageItem,
+  removeStorageItem,
+  setStorageItem,
+} from "@/shared/lib/safeStorage";
+import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { VirtualizedList } from "@/shared/ui/VirtualizedList";
 
@@ -35,6 +41,11 @@ type ForumViewProps = {
   targetSearchQuery?: string;
 };
 
+/** Title drafts persist beside the body draft the composer already keeps. */
+function titleDraftKey(channelId: string): string {
+  return `buzz-forum-post-title:${channelId}`;
+}
+
 function canDelete(postPubkey: string, currentPubkey?: string): boolean {
   if (!currentPubkey) return false;
   // Author can always delete their own posts. Admin check would need
@@ -54,7 +65,9 @@ export function ForumView({
   targetSearchQuery,
 }: ForumViewProps) {
   const [isComposerOpen, setIsComposerOpen] = React.useState(false);
+  const [title, setTitle] = React.useState("");
   const postsScrollRef = React.useRef<HTMLDivElement>(null);
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
 
   const profileQuery = useProfileQuery();
   const postsQuery = useForumPostsQuery(channel);
@@ -70,7 +83,10 @@ export function ForumView({
     selectedPostId,
   );
 
-  const posts = postsQuery.data?.posts ?? [];
+  const posts = React.useMemo(
+    () => (postsQuery.data ?? []).flatMap((page) => page.posts),
+    [postsQuery.data],
+  );
 
   // Collect all pubkeys from posts and thread for profile resolution.
   // Mentioned pubkeys (`p`/`mention` tags) must be included too: mention
@@ -127,7 +143,39 @@ export function ForumView({
 
     previousChannelIdRef.current = channel.id;
     setIsComposerOpen(false);
+    setTitle("");
   }, [channel.id]);
+
+  React.useEffect(() => {
+    if (!isComposerOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isComposerOpen]);
+
+  const openComposer = React.useCallback(() => {
+    setTitle(getStorageItem(titleDraftKey(channel.id)) ?? "");
+    setIsComposerOpen(true);
+  }, [channel.id]);
+
+  const closeComposer = React.useCallback(
+    (options?: { keepDraft?: boolean }) => {
+      if (options?.keepDraft) {
+        // The body draft survives a cancel, so the title must too.
+        if (title.trim()) {
+          setStorageItem(titleDraftKey(channel.id), title);
+        } else {
+          removeStorageItem(titleDraftKey(channel.id));
+        }
+      } else {
+        removeStorageItem(titleDraftKey(channel.id));
+        setTitle("");
+      }
+      setIsComposerOpen(false);
+    },
+    [channel.id, title],
+  );
 
   if (selectedPostId) {
     const threadPost = threadQuery.data?.post;
@@ -143,6 +191,8 @@ export function ForumView({
         currentPubkey={effectiveCurrentPubkey}
         isDeletingPost={deletePostMutation.isPending}
         isLoading={threadQuery.isLoading}
+        loadError={threadQuery.isError ? threadQuery.error : null}
+        onRetry={() => void threadQuery.refetch()}
         isSendingReply={createReplyMutation.isPending}
         onBack={onClosePost}
         onDeletePost={(eventId) => {
@@ -179,15 +229,37 @@ export function ForumView({
             channelId={channel.id}
             channelType="forum"
             draftKey={`forum:${channel.id}`}
+            header={
+              <input
+                aria-label="Post title"
+                className="w-full min-w-0 border-0 bg-transparent p-0 text-sm font-semibold text-foreground outline-hidden placeholder:font-normal placeholder:text-muted-foreground"
+                data-testid="forum-post-title"
+                onChange={(event) => setTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  // Enter in a bare input submits the surrounding form, which
+                  // would post a title with no body. Move to the editor instead.
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  event.currentTarget
+                    .closest("form")
+                    ?.querySelector<HTMLElement>('[contenteditable="true"]')
+                    ?.focus();
+                }}
+                placeholder="Title"
+                ref={titleInputRef}
+                value={title}
+              />
+            }
             isSending={createPostMutation.isPending}
-            onCancel={() => setIsComposerOpen(false)}
+            onCancel={() => closeComposer({ keepDraft: true })}
             onSubmit={async (content, mentionPubkeys, mediaTags) => {
+              const headline = title.trim();
               await createPostMutation.mutateAsync({
-                content,
+                content: headline ? `${headline}\n\n${content}` : content,
                 mentionPubkeys,
                 mediaTags,
               });
-              setIsComposerOpen(false);
+              closeComposer();
             }}
             placeholder="Write your post..."
             profiles={profiles}
@@ -195,8 +267,9 @@ export function ForumView({
         ) : (
           <button
             className="w-full rounded-xl border border-dashed border-border/80 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-border hover:bg-accent/30 hover:text-foreground"
+            data-testid="forum-new-post"
             disabled={!channel.isMember || channel.archivedAt !== null}
-            onClick={() => setIsComposerOpen(true)}
+            onClick={openComposer}
             type="button"
           >
             {channel.archivedAt
@@ -219,6 +292,28 @@ export function ForumView({
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
+          </div>
+        ) : postsQuery.isError ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+            <AlertCircle className="h-10 w-10 text-muted-foreground/40" />
+            <div>
+              <p className="text-sm font-medium text-foreground/70">
+                Could not load posts
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {postsQuery.error instanceof Error
+                  ? postsQuery.error.message
+                  : "The forum did not respond."}
+              </p>
+            </div>
+            <Button
+              disabled={postsQuery.isFetching}
+              onClick={() => void postsQuery.refetch()}
+              size="sm"
+              variant="outline"
+            >
+              {postsQuery.isFetching ? "Retrying..." : "Try again"}
+            </Button>
           </div>
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
@@ -260,6 +355,21 @@ export function ForumView({
             scrollRef={postsScrollRef}
           />
         )}
+
+        {posts.length > 0 && postsQuery.hasNextPage ? (
+          <div className="flex justify-center px-4 pb-6">
+            <Button
+              disabled={postsQuery.isFetchingNextPage}
+              onClick={() => void postsQuery.fetchNextPage()}
+              size="sm"
+              variant="outline"
+            >
+              {postsQuery.isFetchingNextPage
+                ? "Loading older posts..."
+                : "Load older posts"}
+            </Button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

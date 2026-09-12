@@ -83,6 +83,7 @@ export default defineConfig({
         "**/mention-recipients.spec.ts",
         "**/remote-owned-mentions.spec.ts",
         "**/forum-agent-invitation.spec.ts",
+        "**/forum-list.spec.ts",
         "**/team-mentions.spec.ts",
         "**/persistent-agent-audience.spec.ts",
         "**/relay-reconnect.spec.ts",
