@@ -23,6 +23,7 @@ import { splitForumPostContent } from "../lib/postTitle";
 import { formatRelativeTime } from "../lib/time";
 import { DeleteActionMenu } from "./DeleteActionMenu";
 import { ForumComposer } from "./ForumComposer";
+import { ForumStatusPicker } from "./ForumStatusPicker";
 
 type ForumThreadPanelProps = {
   thread: ForumThreadResponse | undefined;
@@ -289,6 +290,11 @@ export function ForumThreadPanel({
         >
           {postTitle ?? `Post by ${postAuthorLabel}`}
         </p>
+        <ForumStatusPicker
+          channelId={channelId}
+          rootEventId={post.eventId}
+          status={post.threadSummary?.status}
+        />
       </div>
 
       <div

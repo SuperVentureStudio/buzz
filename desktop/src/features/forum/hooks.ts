@@ -5,7 +5,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { getForumPosts, getForumThread } from "@/shared/api/forum";
+import {
+  getForumPosts,
+  getForumThread,
+  setForumPostStatus,
+} from "@/shared/api/forum";
 import { useFocusedRefetchInterval } from "@/shared/lib/useDocumentVisible";
 import { useRelaySelfQuery } from "@/features/moderation/hooks";
 import { deleteMessage, sendChannelMessage } from "@/shared/api/tauri";
@@ -234,6 +238,43 @@ export function useCreateForumReplyMutation(channel: Channel | null) {
           queryKey: forumPostsQueryKey(channel.id),
         });
       }
+    },
+  });
+}
+
+/**
+ * Move a thread's status, then refresh both places it is shown.
+ *
+ * The list and the open thread each read the status from the thread's own
+ * comments, so a change has to invalidate both or the card and the header
+ * disagree until the next poll.
+ */
+export function useSetForumPostStatusMutation(channelId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      rootEventId,
+      status,
+      note,
+    }: {
+      rootEventId: string;
+      status: string;
+      note: string;
+    }) => {
+      if (!channelId) {
+        throw new Error("No channel selected.");
+      }
+      await setForumPostStatus(channelId, rootEventId, status, note);
+    },
+    onSuccess: (_data, variables) => {
+      if (!channelId) return;
+      void queryClient.invalidateQueries({
+        queryKey: forumThreadQueryKey(channelId, variables.rootEventId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: forumPostsQueryKey(channelId),
+      });
     },
   });
 }

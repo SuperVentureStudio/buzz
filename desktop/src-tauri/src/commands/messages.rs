@@ -418,6 +418,7 @@ pub async fn send_channel_message(
     sent_from_thread_tag: Option<Vec<String>>,
     mention_pubkeys: Option<Vec<String>>,
     kind: Option<u32>,
+    status: Option<String>,
     expected_relay_url: Option<String>,
     expected_signer_pubkey: Option<String>,
     state: State<'_, AppState>,
@@ -448,6 +449,9 @@ pub async fn send_channel_message(
         &signing_keys.public_key().to_hex(),
     )?;
     let kind_num = kind.unwrap_or(buzz_core_pkg::kind::KIND_STREAM_MESSAGE);
+    if status.is_some() && kind_num != buzz_core_pkg::kind::KIND_FORUM_COMMENT {
+        return Err("a thread status belongs on a forum comment".into());
+    }
     if sent_from_thread_tag.is_some() && kind_num != buzz_core_pkg::kind::KIND_STREAM_MESSAGE {
         return Err("sent-from-thread provenance requires a stream message".into());
     }
@@ -485,6 +489,7 @@ pub async fn send_channel_message(
                 &mention_refs,
                 &media,
                 &mention_refs_only,
+                status.as_deref(),
             )?
         }
         _ => {

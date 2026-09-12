@@ -337,6 +337,7 @@ pub fn build_forum_comment(
     mentions: &[&str],
     media_tags: &[Vec<String>],
     mention_ref_tags: &[Vec<String>],
+    status: Option<&str>,
 ) -> Result<EventBuilder, String> {
     check_content(content)?;
     let mut tags = vec![tag(vec!["h", &channel_id.to_string()])?];
@@ -344,6 +345,16 @@ pub fn build_forum_comment(
     tags.extend(mention_tags(mentions)?);
     imeta_tags(media_tags, &mut tags)?;
     mention_reference_tags(mention_ref_tags, &mut tags)?;
+    // A root event cannot be rewritten, so where the work stands is carried by
+    // the comment that changed it. The thread keeps the whole history and the
+    // newest tag is the current state.
+    if let Some(value) = status {
+        let value = value.trim();
+        if value.is_empty() || value.len() > 40 {
+            return Err("status must be 1-40 characters".into());
+        }
+        tags.push(tag(vec!["status", value])?);
+    }
     Ok(EventBuilder::new(Kind::Custom(45003), content).tags(tags))
 }
 

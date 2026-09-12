@@ -4,7 +4,7 @@ import type {
   ForumThreadResponse,
   ThreadReply,
 } from "@/shared/api/types";
-import { KIND_FORUM_POST } from "@/shared/constants/kinds";
+import { KIND_FORUM_COMMENT, KIND_FORUM_POST } from "@/shared/constants/kinds";
 import { resolveEventAuthorPubkey } from "@/shared/lib/authors";
 
 import { invokeTauri } from "./tauri";
@@ -14,6 +14,7 @@ type RawThreadSummary = {
   descendant_count: number;
   last_reply_at: number | null;
   participants: string[];
+  status?: string | null;
 };
 
 type RawForumPost = {
@@ -86,6 +87,7 @@ function fromRawForumPost(
           descendantCount: post.thread_summary.descendant_count,
           lastReplyAt: post.thread_summary.last_reply_at,
           participants: post.thread_summary.participants,
+          status: post.thread_summary.status ?? null,
         }
       : null,
   };
@@ -165,4 +167,35 @@ export async function getForumThread(
     totalReplies: response.total_replies,
     nextCursor: response.next_cursor,
   };
+}
+
+/**
+ * Say where a thread stands, as a comment on that thread.
+ *
+ * The change is a normal reply carrying a `status` tag, so the thread keeps the
+ * whole history of who moved it and when, and the newest tag is the current
+ * state. Sending it through the ordinary message command means it is signed,
+ * scoped and delivered exactly like every other comment.
+ */
+export async function setForumPostStatus(
+  channelId: string,
+  rootEventId: string,
+  status: string,
+  note: string,
+): Promise<void> {
+  await invokeTauri("send_channel_message", {
+    channelId,
+    content: note,
+    parentEventId: rootEventId,
+    rootEventId,
+    mediaTags: null,
+    emojiTags: null,
+    mentionTags: null,
+    sentFromThreadTag: null,
+    mentionPubkeys: null,
+    kind: KIND_FORUM_COMMENT,
+    status,
+    expectedRelayUrl: null,
+    expectedSignerPubkey: null,
+  });
 }

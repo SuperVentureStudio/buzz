@@ -263,6 +263,11 @@ pub struct ThreadSummary {
     pub descendant_count: u32,
     pub last_reply_at: Option<i64>,
     pub participants: Vec<String>,
+    /// The newest `status` tag anyone put on the thread, so a list of posts can
+    /// say where each one stands without opening it. Absent until someone sets
+    /// one; the value is whatever was written, not a fixed vocabulary.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
