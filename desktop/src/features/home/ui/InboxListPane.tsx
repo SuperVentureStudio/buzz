@@ -345,6 +345,7 @@ export function InboxListPane({
       <div
         aria-current={isSelected ? "true" : undefined}
         className="group/inbox-item relative"
+        data-inbox-row=""
         data-testid={`home-inbox-item-${item.id}`}
         style={
           {
@@ -403,7 +404,7 @@ export function InboxListPane({
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-start gap-2">
+              <div className="flex min-w-0 items-start gap-2 group-hover/inbox-item:pr-[6.75rem] group-focus-within/inbox-item:pr-[6.75rem]">
                 <span
                   className="flex min-w-0 flex-1 items-start leading-4"
                   data-inbox-profile-trigger="true"
@@ -421,7 +422,7 @@ export function InboxListPane({
                 </span>
                 <span
                   className={cn(
-                    "flex shrink-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground/70 transition-opacity group-hover/inbox-item:opacity-0 group-focus-within/inbox-item:opacity-0",
+                    "flex shrink-0 items-center gap-1.5 text-xs leading-4 text-muted-foreground/70",
                     isDone ? "font-normal" : "font-medium",
                   )}
                 >
