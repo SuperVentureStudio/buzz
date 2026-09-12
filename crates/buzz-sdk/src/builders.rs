@@ -322,12 +322,25 @@ pub fn build_forum_comment(
     thread_ref: &ThreadRef,
     mentions: &[&str],
     media_tags: &[Vec<String>],
+    status: Option<&str>,
 ) -> Result<EventBuilder, SdkError> {
     check_content(content, 64 * 1024)?;
     let mut tags = vec![tag(&["h", &channel_id.to_string()])?];
     thread_tags(thread_ref, &mut tags)?;
     mention_tags(mentions, &mut tags)?;
     imeta_tags(media_tags, &mut tags)?;
+    // A forum root is signed and cannot be rewritten, so where the work it
+    // describes stands is carried by the comment that moved it. The thread
+    // keeps the history and the newest tag is the current state.
+    if let Some(value) = status {
+        let value = value.trim();
+        if value.is_empty() || value.len() > 40 {
+            return Err(SdkError::InvalidInput(
+                "status must be 1-40 characters".into(),
+            ));
+        }
+        tags.push(tag(&["status", value])?);
+    }
     Ok(EventBuilder::new(Kind::Custom(45003), content)
         .tags(tags)
         .allow_self_tagging())
@@ -2444,7 +2457,7 @@ mod tests {
             root_event_id: root,
             parent_event_id: root,
         };
-        let builder = build_forum_comment(cid, "self-canary", &tr, &[&self_pk], &[]).unwrap();
+        let builder = build_forum_comment(cid, "self-canary", &tr, &[&self_pk], &[], None).unwrap();
         let ev = builder.sign_with_keys(&sender).expect("sign");
         assert!(
             has_tag(&ev, "p", &self_pk),
@@ -2703,9 +2716,30 @@ mod tests {
             root_event_id: eid,
             parent_event_id: eid,
         };
-        let ev = sign(build_forum_comment(cid, "comment", &tr, &[], &[]).unwrap());
+        let ev = sign(build_forum_comment(cid, "comment", &tr, &[], &[], None).unwrap());
         assert_eq!(ev.kind.as_u16(), 45003);
         assert!(has_tag(&ev, "h", &cid.to_string()));
+        assert!(!ev.tags.iter().any(|t| t.as_slice().first().map(String::as_str) == Some("status")));
+    }
+
+    #[test]
+    fn forum_comment_carries_a_thread_status() {
+        let cid = uuid();
+        let eid = event_id();
+        let tr = ThreadRef {
+            root_event_id: eid,
+            parent_event_id: eid,
+        };
+        let ev = sign(build_forum_comment(cid, "fixed it", &tr, &[], &[], Some(" fixed ")).unwrap());
+        assert!(has_tag(&ev, "status", "fixed"));
+        // A blank or oversized status is a caller mistake, not a silent no-op: a
+        // thread that reports the wrong state is worse than one reporting none.
+        for bad in ["", "   ", &"x".repeat(41)] {
+            assert!(matches!(
+                build_forum_comment(cid, "c", &tr, &[], &[], Some(bad)),
+                Err(SdkError::InvalidInput(_))
+            ));
+        }
     }
 
     fn good_diff_meta() -> DiffMeta {

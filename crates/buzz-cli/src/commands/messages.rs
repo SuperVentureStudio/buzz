@@ -603,6 +603,7 @@ pub struct SendMessageParams {
     pub content: String,
     pub kind: Option<u16>,
     pub reply_to: Option<String>,
+    pub status: Option<String>,
     pub broadcast: bool,
     pub files: Vec<String>,
     pub mentions: Vec<String>,
@@ -620,6 +621,11 @@ pub async fn cmd_send_message(
     validate_content_size(&p.content)?;
     if let Some(ref r) = p.reply_to {
         validate_hex64(r)?;
+    }
+    if p.status.is_some() && p.kind != Some(45003) {
+        return Err(CliError::Usage(
+            "--status belongs on a forum comment; pass --kind 45003 --reply-to <root>".into(),
+        ));
     }
     let channel_uuid = parse_uuid(&p.channel_id)?;
 
@@ -695,6 +701,7 @@ pub async fn cmd_send_message(
                 tr,
                 &mention_refs,
                 &media_tags,
+                p.status.as_deref(),
             )
             .map_err(|e| CliError::Other(format!("build_forum_comment failed: {e}")))?
         }
@@ -942,6 +949,7 @@ pub async fn dispatch(
             content,
             kind,
             reply_to,
+            status,
             broadcast,
             files,
             mentions,
@@ -953,6 +961,7 @@ pub async fn dispatch(
                     content,
                     kind,
                     reply_to,
+                    status,
                     broadcast,
                     files,
                     mentions,
