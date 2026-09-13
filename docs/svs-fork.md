@@ -66,12 +66,17 @@ codesign --force --deep --sign "SVS Local Signing" src-tauri/target/release/bund
 codesign --verify --deep --strict src-tauri/target/release/bundle/macos/SVS.app
 ```
 
-Never ad-hoc sign (`--sign -`). The keychain trusts an app by its signature,
-and an ad-hoc signature is unique to each build, so every install asks for the
-login password again to read the `buzz-desktop` item. `SVS Local Signing` is a
-self-signed certificate in the login keychain, trusted for code signing only;
-builds signed with it look like the same app, so one "Always Allow" lasts.
-Check it with `security find-identity -v -p codesigning`.
+Never ad-hoc sign (`--sign -`). Before SVS reads the `buzz-desktop` keychain
+item, macOS checks two lists on it. The access list trusts an app by its
+signature: `SVS Local Signing` (a self-signed certificate in the login
+keychain, trusted for code signing only) keeps that trust across builds. The
+partition list trusts an app by its Apple Team ID, and an app without one only
+by its exact build (`cdhash:`). A self-signed certificate has no Team ID, so
+each new install still asks for the login password once; click Always Allow.
+Only an Apple-issued certificate with a Team ID (a free Apple Development
+certificate from Xcode, or a paid Developer ID) removes that last prompt.
+Check with `security find-identity -v -p codesigning` and
+`codesign -dvvv /Applications/SVS.app` (`TeamIdentifier`).
 
 To install, quit SVS, move `/Applications/SVS.app` to a dated directory under
 `~/svs/var/backups/buzz/`, copy the verified bundle into `/Applications`, then
