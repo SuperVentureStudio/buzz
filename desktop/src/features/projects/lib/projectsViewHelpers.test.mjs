@@ -244,4 +244,9 @@ test("listRowDescription keeps real copy and drops empty or title-duplicate text
     undefined,
   );
   assert.equal(listRowDescription("**Hello** world"), "Hello world");
+  assert.equal(
+    listRowDescription("Call to array_to_object() on null, _really_"),
+    "Call to array_to_object() on null, really",
+  );
+  assert.equal(listRowDescription("a __bold__ get__x__y"), "a bold get__x__y");
 });

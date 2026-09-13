@@ -230,8 +230,12 @@ export function markdownToPlainText(input: string): string {
       // Line-leading markers: headings, blockquotes, list bullets/numbers.
       .replace(/^[ \t]{0,3}(?:#{1,6}|>|[-*+]|\d+[.)])[ \t]+/gm, "")
       // Emphasis: bold/italic/strikethrough — keep the inner text.
-      .replace(/(\*\*|__)(.+?)\1/g, "$2")
-      .replace(/([*_])(.+?)\1/g, "$2")
+      // Underscores only emphasise outside a word, as in CommonMark, so an
+      // identifier like `array_to_object()` keeps its underscores.
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/(^|[^\p{L}\p{N}_])__(.+?)__(?![\p{L}\p{N}_])/gu, "$1$2")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/(^|[^\p{L}\p{N}_])_(.+?)_(?![\p{L}\p{N}_])/gu, "$1$2")
       .replace(/~~(.+?)~~/g, "$1")
       // Inline code — keep the inner text.
       .replace(/`([^`]+)`/g, "$1")
