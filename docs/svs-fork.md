@@ -58,25 +58,32 @@ pnpm tauri:build:svs:replace
 
 The bundle is written to
 `desktop/src-tauri/target/release/bundle/macos/SVS.app`. Before installation,
-sign the completed local bundle with the `SVS Local Signing` certificate so its
-current resources and `Info.plist` are sealed:
+sign the completed local bundle with Faisal's free Apple Development
+certificate so its current resources and `Info.plist` are sealed:
 
 ```bash
-codesign --force --deep --sign "SVS Local Signing" src-tauri/target/release/bundle/macos/SVS.app
+codesign --force --deep --sign "Apple Development: faisal@webmedic.com (RF295R48PU)" src-tauri/target/release/bundle/macos/SVS.app
 codesign --verify --deep --strict src-tauri/target/release/bundle/macos/SVS.app
 ```
 
-Never ad-hoc sign (`--sign -`). Before SVS reads the `buzz-desktop` keychain
-item, macOS checks two lists on it. The access list trusts an app by its
-signature: `SVS Local Signing` (a self-signed certificate in the login
-keychain, trusted for code signing only) keeps that trust across builds. The
-partition list trusts an app by its Apple Team ID, and an app without one only
-by its exact build (`cdhash:`). A self-signed certificate has no Team ID, so
-each new install still asks for the login password once; click Always Allow.
-Only an Apple-issued certificate with a Team ID (a free Apple Development
-certificate from Xcode, or a paid Developer ID) removes that last prompt.
+Never ad-hoc sign (`--sign -`) or use a self-signed certificate. Before SVS
+reads the `buzz-desktop` keychain item, macOS checks two lists on it: the
+access list trusts an app by its signature, and the partition list trusts it
+by its Apple Team ID, or, without one, only by its exact build (`cdhash:`).
+Only an Apple-issued certificate carries a Team ID, so only it lets a new
+build read the item without a password prompt. The item trusts
+`teamid:4T3Q2YC9PQ` (Faisal Hourani, Personal Team); proven 2026-09-13 by
+re-signing with a changed build hash and relaunching with no prompt.
+
+The certificate comes from Xcode → Settings → Accounts → Manage Certificates
+and expires a year after issue (first one: 2027-09-13). Renew it there; the
+Team ID stays the same, but delete the expired certificate so the name above
+matches one identity. It chains through Apple's WWDR G3 intermediate, which
+Xcode did not install: without `AppleWWDRCAG3.cer` (from
+apple.com/certificateauthority) in the login keychain, `codesign` fails with
+"unable to build chain to self-signed root" and `errSecInternalComponent`.
 Check with `security find-identity -v -p codesigning` and
-`codesign -dvvv /Applications/SVS.app` (`TeamIdentifier`).
+`codesign -dvvv /Applications/SVS.app` (`TeamIdentifier=4T3Q2YC9PQ`).
 
 To install, quit SVS, move `/Applications/SVS.app` to a dated directory under
 `~/svs/var/backups/buzz/`, copy the verified bundle into `/Applications`, then
