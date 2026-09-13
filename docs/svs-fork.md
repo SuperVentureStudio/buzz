@@ -58,13 +58,20 @@ pnpm tauri:build:svs:replace
 
 The bundle is written to
 `desktop/src-tauri/target/release/bundle/macos/SVS.app`. Before installation,
-ad-hoc sign the completed local bundle so its current resources and
-`Info.plist` are sealed:
+sign the completed local bundle with the `SVS Local Signing` certificate so its
+current resources and `Info.plist` are sealed:
 
 ```bash
-codesign --force --deep --sign - src-tauri/target/release/bundle/macos/SVS.app
+codesign --force --deep --sign "SVS Local Signing" src-tauri/target/release/bundle/macos/SVS.app
 codesign --verify --deep --strict src-tauri/target/release/bundle/macos/SVS.app
 ```
+
+Never ad-hoc sign (`--sign -`). The keychain trusts an app by its signature,
+and an ad-hoc signature is unique to each build, so every install asks for the
+login password again to read the `buzz-desktop` item. `SVS Local Signing` is a
+self-signed certificate in the login keychain, trusted for code signing only;
+builds signed with it look like the same app, so one "Always Allow" lasts.
+Check it with `security find-identity -v -p codesigning`.
 
 To install, quit SVS, move `/Applications/SVS.app` to a dated directory under
 `~/svs/var/backups/buzz/`, copy the verified bundle into `/Applications`, then
