@@ -1,4 +1,10 @@
-import { AlertCircle, MessageSquareText, Plus, Search } from "lucide-react";
+import {
+  AlertCircle,
+  MessageSquareText,
+  Plus,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import * as React from "react";
 
 import { useAppShell } from "@/app/AppShellContext";
@@ -319,6 +325,23 @@ export function ForumView({
             {posts.length > 1 ? (
               <ForumSortMenu onSortChange={setSort} sort={sort} />
             ) : null}
+            <Button
+              aria-label="Refresh posts"
+              data-testid="forum-refresh"
+              disabled={postsQuery.isFetching}
+              onClick={() => void postsQuery.refetch()}
+              size="icon"
+              title="Refresh"
+              variant="ghost"
+            >
+              <RefreshCw
+                aria-hidden
+                className={cn(
+                  "h-4 w-4",
+                  postsQuery.isFetching && "animate-spin",
+                )}
+              />
+            </Button>
             {postingBlockedReason ? (
               <p className="shrink-0 text-xs text-muted-foreground">
                 {postingBlockedReason}
