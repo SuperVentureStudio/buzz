@@ -32,8 +32,14 @@ import {
   forumStatusOptions,
   NO_FORUM_STATUS,
 } from "../lib/filterPosts";
+import {
+  DEFAULT_FORUM_SORT,
+  type ForumSort,
+  sortForumPosts,
+} from "../lib/sortPosts";
 import { ForumComposer } from "./ForumComposer";
 import { ForumPostCard } from "./ForumPostCard";
+import { ForumSortMenu } from "./ForumSortMenu";
 import { ForumThreadPanel } from "./ForumThreadPanel";
 
 type ForumViewProps = {
@@ -117,9 +123,14 @@ export function ForumView({
   )
     ? statusFilter
     : ALL_FORUM_STATUSES;
+  const [sort, setSort] = React.useState<ForumSort>(DEFAULT_FORUM_SORT);
   const visiblePosts = React.useMemo(
-    () => filterForumPosts(posts, { query: searchQuery, status: activeStatus }),
-    [activeStatus, posts, searchQuery],
+    () =>
+      sortForumPosts(
+        filterForumPosts(posts, { query: searchQuery, status: activeStatus }),
+        sort,
+      ),
+    [activeStatus, posts, searchQuery, sort],
   );
 
   // Collect all pubkeys from posts and thread for profile resolution.
@@ -305,6 +316,9 @@ export function ForumView({
                 value={searchQuery}
               />
             </div>
+            {posts.length > 1 ? (
+              <ForumSortMenu onSortChange={setSort} sort={sort} />
+            ) : null}
             {postingBlockedReason ? (
               <p className="shrink-0 text-xs text-muted-foreground">
                 {postingBlockedReason}

@@ -112,3 +112,38 @@ test("search and status chips narrow the forum to the threads you want", async (
   await page.getByRole("button", { name: "Clear filters" }).click();
   await expect(rows).toHaveCount(4);
 });
+
+test("threads sort by latest activity, and the sort menu reorders them", async ({
+  page,
+}) => {
+  await installMockBridge(page);
+  await page.goto("/");
+
+  // A new comment on the older, quieter seeded thread should lift it to the top.
+  await page.getByTestId("channel-general").click();
+  await waitForMockLiveSubscription(page, "watercooler");
+  await page.evaluate(
+    (pubkey) =>
+      window.__BUZZ_E2E_EMIT_MOCK_MESSAGE__?.({
+        channelName: "watercooler",
+        content: "Flights are booked.",
+        kind: 45003,
+        parentEventId: "mock-forum-offsite-thread",
+        pubkey,
+      }),
+    TEST_IDENTITIES.alice.pubkey,
+  );
+
+  await page.getByTestId("channel-watercooler").click();
+  const rows = page.getByTestId("forum-post-row");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toContainText("Team offsite planning");
+
+  const sort = page.getByTestId("forum-sort");
+  await expect(sort).toHaveAccessibleName("Sort: Latest activity");
+  await sort.click();
+  await page.getByRole("menuitemradio", { name: "Most replies" }).click();
+
+  await expect(sort).toHaveAccessibleName("Sort: Most replies");
+  await expect(rows.first()).toContainText("Release checklist");
+});
