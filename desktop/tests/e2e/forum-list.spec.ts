@@ -62,3 +62,53 @@ test("a forum past one page loads older posts on demand", async ({ page }) => {
     page.getByText("Release checklist: async feedback thread."),
   ).toBeVisible();
 });
+
+test("search and status chips narrow the forum to the threads you want", async ({
+  page,
+}) => {
+  await installMockBridge(page);
+  await page.goto("/");
+
+  await page.getByTestId("channel-general").click();
+  await waitForMockLiveSubscription(page, "watercooler");
+  const [, fixedPostId] = await emitForumPosts(page, [
+    "Bugsnag · WebMedic\n\nSQLSTATE[40001]: Deadlock found when trying to get lock",
+    "Bugsnag · D-Link website\n\nCall to a member function get_queried_object() on null",
+  ]);
+  await page.evaluate(
+    ({ rootId, pubkey }) =>
+      window.__BUZZ_E2E_EMIT_MOCK_MESSAGE__?.({
+        channelName: "watercooler",
+        content: "Fixed in the last deploy.",
+        extraTags: [["status", "fixed"]],
+        kind: 45003,
+        parentEventId: rootId,
+        pubkey,
+      }),
+    { rootId: fixedPostId, pubkey: TEST_IDENTITIES.alice.pubkey },
+  );
+
+  await page.getByTestId("channel-watercooler").click();
+  const rows = page.getByTestId("forum-post-row");
+  // Two seeded posts plus the two above.
+  await expect(rows).toHaveCount(4);
+
+  const search = page.getByRole("textbox", { name: "Search posts" });
+  await search.fill("deadlock");
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("Bugsnag · WebMedic");
+
+  // Escape clears the search without reaching for the mouse.
+  await search.press("Escape");
+  await expect(rows).toHaveCount(4);
+
+  await page.getByRole("button", { name: /^Fixed/ }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("Bugsnag · D-Link website");
+
+  // A search that matches nothing under the chosen status offers a way back.
+  await search.fill("deadlock");
+  await expect(page.getByText("No posts match")).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(rows).toHaveCount(4);
+});

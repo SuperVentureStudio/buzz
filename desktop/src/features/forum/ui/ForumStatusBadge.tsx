@@ -15,7 +15,7 @@ export function ForumStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4",
+        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-2xs font-medium leading-4",
         described.className,
         className,
       )}

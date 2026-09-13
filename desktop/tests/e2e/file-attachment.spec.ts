@@ -588,14 +588,20 @@ test("forum posts emit a FileCard for generic attachments, not a broken image", 
   // "watercooler" is a seeded forum the mock identity is a member of.
   await page.getByTestId("channel-watercooler").click();
 
-  // Open the new-post composer ("Start a new post...").
-  await page.getByRole("button", { name: "Start a new post..." }).click();
+  // Open the new-post composer ("New post").
+  await page.getByRole("button", { name: "New post", exact: true }).click();
 
   // Paperclip → mocked pick_and_upload_media returns the PDF descriptor.
   await page.getByRole("button", { name: "Attach file" }).click();
 
   // Submit the (attachment-only) forum post.
   await page.getByTestId("send-message").click();
+
+  // The list row is a one-line preview; the attachment renders in the open
+  // thread. "watercooler" seeds two posts, and the newest post sorts first.
+  const rows = page.getByTestId("forum-post-row");
+  await expect(rows).toHaveCount(3);
+  await rows.first().click();
 
   // The post renders through the shared Markdown component as a FileCard —
   // a button carrying the filename that downloads via the native

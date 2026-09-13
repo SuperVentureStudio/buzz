@@ -36,7 +36,7 @@ async function install(page: Page, channel = "general", agents = false) {
   await page.getByTestId(`channel-${channel}`).click();
   await expect(page.getByTestId("chat-title")).toHaveText(channel);
   if (channel === "watercooler")
-    await page.getByRole("button", { name: "Start a new post..." }).click();
+    await page.getByRole("button", { name: "New post", exact: true }).click();
 }
 
 async function recipients(page: Page, content: string) {

@@ -842,6 +842,7 @@ type RawThreadSummary = {
   descendant_count: number;
   last_reply_at: number | null;
   participants: string[];
+  status?: string | null;
 };
 
 type RawForumPost = {
@@ -5368,6 +5369,13 @@ async function handleGetForumPosts(args: {
       last_reply_at:
         replies.length > 0 ? replies[replies.length - 1].created_at : null,
       participants: [...new Set(replies.map((reply) => reply.pubkey))],
+      // Like the relay: the newest reply that declares a status sets it.
+      status:
+        [...replies]
+          .reverse()
+          .flatMap((reply) => reply.tags)
+          .find((tag) => tag[0] === "status" && tag[1]?.trim())?.[1]
+          ?.trim() ?? null,
     });
   });
 

@@ -763,27 +763,27 @@ test("forum post and reply selection copies carry the mention", async ({
   await page.getByTestId("channel-watercooler").click();
   await expect(page.getByTestId("chat-title")).toHaveText("watercooler");
 
-  // The chip resolves a non-member's name off a profile round trip — wait for
-  // the identity, not the card.
-  const cardChip = page.locator(
-    `.message-markdown [data-mention-pubkey="${JOHN_SMITH_PUBKEY}"]`,
-  );
-  await expect(cardChip).toHaveText("John Smith", { timeout: 15_000 });
-
-  const cardFlavors = await copyFromForumMarkdown(page, "fixed the bug");
-  expectCarriesJohnSmith(cardFlavors);
-  expect(cardFlavors.text.trim()).toBe(MESSAGE_BODY);
-
-  // Open the thread; both the root post and the reply render in the panel.
+  // The list row is a plain one-line preview. Open the thread: the root post
+  // and the reply both render there as Markdown with their mention chips.
   await page
-    .locator('[role="button"]')
+    .getByTestId("forum-post-row")
     .filter({ hasText: "fixed the bug" })
-    .click({ position: { x: 8, y: 8 } });
+    .click();
+  // The chip resolves a non-member's name off a profile round trip — wait for
+  // the identity, not the post.
+  const postChip = page.locator(
+    `[data-forum-event-id="${postId}"] [data-mention-pubkey="${JOHN_SMITH_PUBKEY}"]`,
+  );
+  await expect(postChip).toHaveText("John Smith", { timeout: 15_000 });
+
+  const postFlavors = await copyFromForumMarkdown(page, "fixed the bug");
+  expectCarriesJohnSmith(postFlavors);
+  expect(postFlavors.text.trim()).toBe(MESSAGE_BODY);
+
   const replyChip = page.locator(
     `[data-forum-event-id="${replyId}"] [data-mention-pubkey="${JOHN_SMITH_PUBKEY}"]`,
   );
   await expect(replyChip).toHaveText("John Smith", { timeout: 15_000 });
-  await expect(page.locator(`[data-forum-event-id="${postId}"]`)).toBeVisible();
 
   const replyFlavors = await copyFromForumMarkdown(page, "should confirm");
   expectCarriesJohnSmith(replyFlavors);

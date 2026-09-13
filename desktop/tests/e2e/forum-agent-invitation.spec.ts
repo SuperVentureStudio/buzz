@@ -83,7 +83,7 @@ async function openStandaloneForumInvite(page: Page) {
   await install(page);
   await page.getByTestId("channel-watercooler").click();
   await expect(page.getByTestId("chat-title")).toHaveText("watercooler");
-  await page.getByRole("button", { name: "Start a new post..." }).click();
+  await page.getByRole("button", { name: "New post", exact: true }).click();
   await select(page);
   await page.getByTestId("send-message").click();
   const dialog = page.getByRole("alertdialog");

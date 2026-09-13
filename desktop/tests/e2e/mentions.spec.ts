@@ -1884,7 +1884,7 @@ test("relay-only shared agents appear in forum mentions", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("channel-watercooler").click();
   await expect(page.getByTestId("chat-title")).toHaveText("watercooler");
-  await page.getByRole("button", { name: "Start a new post..." }).click();
+  await page.getByRole("button", { name: "New post", exact: true }).click();
 
   await page.getByTestId("message-input").fill("@quinn");
 
@@ -1921,7 +1921,7 @@ test("forum sends revalidate relay-agent authorization before signing", async ({
   await page.goto("/");
   await page.getByTestId("channel-watercooler").click();
   await expect(page.getByTestId("chat-title")).toHaveText("watercooler");
-  await page.getByRole("button", { name: "Start a new post..." }).click();
+  await page.getByRole("button", { name: "New post", exact: true }).click();
 
   await page.evaluate(
     async ({ channelId, pubkey }) => {
@@ -4789,17 +4789,20 @@ test("clicking a mention chip in a forum post opens the profile panel", async ({
   await page.getByTestId("channel-watercooler").click();
   await expect(page.getByTestId("chat-title")).toHaveText("watercooler");
 
-  const mentionChip = page.locator("[data-mention]", { hasText: "bob" });
+  // The list row is a plain preview; the post's chips render in the thread.
+  await page
+    .getByTestId("forum-post-row")
+    .filter({ hasText: "Welcome aboard" })
+    .click();
+  const mentionChip = page.locator("[data-forum-event-id] [data-mention]", {
+    hasText: "bob",
+  });
   await expect(mentionChip).toBeVisible();
   await mentionChip.click();
 
   const panel = page.getByTestId("user-profile-panel");
   await expect(panel).toBeVisible();
   await expect(panel).toContainText("bob");
-  // The chip click must not bubble into the card and open the thread view.
-  await expect(page.getByRole("button", { name: "Back to posts" })).toHaveCount(
-    0,
-  );
 });
 
 test("agent profile popover shows its owner", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { AlertCircle, MessageSquareText } from "lucide-react";
+import { AlertCircle, MessageSquareText, Plus, Search } from "lucide-react";
 import * as React from "react";
 
 import { useAppShell } from "@/app/AppShellContext";
@@ -26,6 +26,12 @@ import {
   useForumPostsQuery,
   useForumThreadQuery,
 } from "../hooks";
+import {
+  ALL_FORUM_STATUSES,
+  filterForumPosts,
+  forumStatusOptions,
+  NO_FORUM_STATUS,
+} from "../lib/filterPosts";
 import { ForumComposer } from "./ForumComposer";
 import { ForumPostCard } from "./ForumPostCard";
 import { ForumThreadPanel } from "./ForumThreadPanel";
@@ -74,6 +80,9 @@ export function ForumView({
 }: ForumViewProps) {
   const [isComposerOpen, setIsComposerOpen] = React.useState(false);
   const [title, setTitle] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] =
+    React.useState<string>(ALL_FORUM_STATUSES);
   const postsScrollRef = React.useRef<HTMLDivElement>(null);
   const titleInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -95,6 +104,22 @@ export function ForumView({
   const posts = React.useMemo(
     () => (postsQuery.data ?? []).flatMap((page) => page.posts),
     [postsQuery.data],
+  );
+
+  const statusOptions = React.useMemo(() => forumStatusOptions(posts), [posts]);
+  const hasStatuses = statusOptions.some(
+    (option) => option.key !== NO_FORUM_STATUS,
+  );
+  // When the last post under a status moves on, its chip disappears. Keeping
+  // the stale filter would show an empty list with no chip left to undo it.
+  const activeStatus = statusOptions.some(
+    (option) => option.key === statusFilter,
+  )
+    ? statusFilter
+    : ALL_FORUM_STATUSES;
+  const visiblePosts = React.useMemo(
+    () => filterForumPosts(posts, { query: searchQuery, status: activeStatus }),
+    [activeStatus, posts, searchQuery],
   );
 
   // Collect all pubkeys from posts and thread for profile resolution.
@@ -153,6 +178,8 @@ export function ForumView({
     previousChannelIdRef.current = channel.id;
     setIsComposerOpen(false);
     setTitle("");
+    setSearchQuery("");
+    setStatusFilter(ALL_FORUM_STATUSES);
   }, [channel.id]);
 
   // Reading a thread is the only thing that clears its replies. The channel
@@ -199,6 +226,11 @@ export function ForumView({
     [channel.id, title],
   );
 
+  const clearFilters = React.useCallback(() => {
+    setSearchQuery("");
+    setStatusFilter(ALL_FORUM_STATUSES);
+  }, []);
+
   if (selectedPostId) {
     const threadPost = threadQuery.data?.post;
     const canDeleteExpandedPost = threadPost
@@ -242,10 +274,92 @@ export function ForumView({
     );
   }
 
+  const postingBlockedReason = channel.archivedAt
+    ? "This forum is archived."
+    : !channel.isMember
+      ? "Join this forum to create posts."
+      : null;
+
   return (
     <div className={cn("flex h-full flex-col", channelChrome.contentPadding)}>
       <div className="border-b border-border/60 p-4">
-        <div className={FORUM_COLUMN}>
+        <div className={cn(FORUM_COLUMN, "space-y-3")}>
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                aria-label="Search posts"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="w-full rounded-lg border border-border/70 bg-background py-1.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid="forum-search"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Escape" || !searchQuery) return;
+                  event.preventDefault();
+                  setSearchQuery("");
+                }}
+                placeholder="Search posts"
+                spellCheck={false}
+                type="text"
+                value={searchQuery}
+              />
+            </div>
+            {postingBlockedReason ? (
+              <p className="shrink-0 text-xs text-muted-foreground">
+                {postingBlockedReason}
+              </p>
+            ) : isComposerOpen ? null : (
+              <Button
+                data-testid="forum-new-post"
+                onClick={openComposer}
+                size="sm"
+              >
+                <Plus aria-hidden className="h-4 w-4" />
+                New post
+              </Button>
+            )}
+          </div>
+
+          {hasStatuses ? (
+            <fieldset className="flex flex-wrap gap-1.5">
+              <legend className="sr-only">Filter by status</legend>
+              {[
+                {
+                  key: ALL_FORUM_STATUSES,
+                  label: "All",
+                  count: posts.length,
+                },
+                ...statusOptions,
+              ].map((option) => {
+                const selected = activeStatus === option.key;
+                return (
+                  <button
+                    aria-pressed={selected}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+                      selected
+                        ? "border-primary/50 bg-primary/15 text-foreground"
+                        : "border-border/60 text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                    )}
+                    key={option.key}
+                    onClick={() =>
+                      setStatusFilter(
+                        selected ? ALL_FORUM_STATUSES : option.key,
+                      )
+                    }
+                    type="button"
+                  >
+                    {option.label}
+                    <span className="tabular-nums opacity-70">
+                      {option.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </fieldset>
+          ) : null}
+
           {isComposerOpen ? (
             <ForumComposer
               autocompleteBelow
@@ -287,21 +401,7 @@ export function ForumView({
               placeholder="Write your post..."
               profiles={profiles}
             />
-          ) : (
-            <button
-              className="w-full rounded-xl border border-dashed border-border/80 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-border hover:bg-accent/30 hover:text-foreground"
-              data-testid="forum-new-post"
-              disabled={!channel.isMember || channel.archivedAt !== null}
-              onClick={openComposer}
-              type="button"
-            >
-              {channel.archivedAt
-                ? "This forum is archived."
-                : !channel.isMember
-                  ? "Join this forum to create posts."
-                  : "Start a new post..."}
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -312,10 +412,10 @@ export function ForumView({
         ref={postsScrollRef}
       >
         {postsQuery.isLoading ? (
-          <div className="space-y-3 p-4">
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
+          <div className="space-y-2 p-4">
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
           </div>
         ) : postsQuery.isError ? (
           <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
@@ -351,18 +451,35 @@ export function ForumView({
               </p>
             </div>
           </div>
+        ) : visiblePosts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+            <Search className="h-10 w-10 text-muted-foreground/40" />
+            <div>
+              <p className="text-sm font-medium text-foreground/70">
+                No posts match
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {postsQuery.hasNextPage
+                  ? "Only loaded posts are searched. Load older posts to look further back."
+                  : "Try another word or status."}
+              </p>
+            </div>
+            <Button onClick={clearFilters} size="sm" variant="outline">
+              Clear filters
+            </Button>
+          </div>
         ) : (
           // Padding lives on this wrapper, not on the virtualizer's spacer:
           // the rows are absolutely positioned, so they ignore the spacer's
           // own padding and would sit flush against the composer's divider.
           <div className="px-4 pt-4">
             <VirtualizedList
-              estimateSize={120}
+              estimateSize={72}
               getItemKey={(post) => post.eventId}
               innerClassName={FORUM_COLUMN}
-              items={posts}
+              items={visiblePosts}
               renderItem={(post) => (
-                <div className="pb-3">
+                <div className="pb-2">
                   <ForumPostCard
                     canDelete={canDelete(post.pubkey, effectiveCurrentPubkey)}
                     currentPubkey={effectiveCurrentPubkey}
