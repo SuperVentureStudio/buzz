@@ -444,8 +444,7 @@ export function ProfileSummaryView({
           agentActionLive={
             !isSvsManaged &&
             (managedAgent?.status === "running" ||
-            managedAgent?.status === "deployed"
-            )
+              managedAgent?.status === "deployed")
           }
           onAgentPrimaryAction={
             isOwner === true && managedAgent && !isSvsManaged
@@ -649,7 +648,9 @@ function ProfileHero({
               data-testid="user-profile-svs-managed-badge"
               role="img"
             >
-              <span className={cn("rounded-full bg-primary", presenceDotClassName)} />
+              <span
+                className={cn("rounded-full bg-primary", presenceDotClassName)}
+              />
             </span>
           ) : presenceStatus ? (
             <span

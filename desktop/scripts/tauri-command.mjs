@@ -55,10 +55,14 @@ export function assertBundledSidecars(args) {
     try {
       stat = statSync(sidecar);
     } catch {
-      throw new Error(`Missing bundled sidecar: ${sidecar}. Run scripts/bundle-sidecars.sh first.`);
+      throw new Error(
+        `Missing bundled sidecar: ${sidecar}. Run scripts/bundle-sidecars.sh first.`,
+      );
     }
     if (!stat.isFile() || stat.size < 1024 || (stat.mode & 0o111) === 0) {
-      throw new Error(`Invalid bundled sidecar: ${sidecar}. Run scripts/bundle-sidecars.sh first.`);
+      throw new Error(
+        `Invalid bundled sidecar: ${sidecar}. Run scripts/bundle-sidecars.sh first.`,
+      );
     }
   }
 }

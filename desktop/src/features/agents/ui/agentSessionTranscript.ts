@@ -14,7 +14,6 @@ import {
 import { classifyTool } from "./agentSessionToolClassifier";
 import { asRecord, asString, titleCase } from "./agentSessionUtils";
 import {
-  describeTurnStarted,
   describeSessionResolved,
   extractBlockText,
   extractContentText,
@@ -28,6 +27,11 @@ import {
   parseSystemPromptSections,
 } from "./agentSessionTranscriptHelpers";
 import { friendlyTurnErrorCopy } from "../lib/friendlyAgentLastError";
+import {
+  isSvsObserverPayload,
+  svsTurnCompletedLabel,
+  svsTurnStartLabel,
+} from "./svsTurnLabels";
 
 export { describeRawEvent } from "./agentSessionTranscriptHelpers";
 
@@ -169,25 +173,6 @@ function stringifyPayload(value: unknown) {
   } catch {
     return String(value);
   }
-}
-
-function isSvsObserverPayload(payload: unknown) {
-  return asString(asRecord(payload).source) === "svs";
-}
-
-// SVS names its own turns: which message it is working on, and how long the answer took. Older records carry no
-// title or text and keep the generic labels.
-function svsTurnLabel(payload: unknown, fallbackTitle: string, fallbackText: string) {
-  const record = asRecord(payload);
-  return { title: asString(record.title) ?? fallbackTitle, text: asString(record.text) ?? fallbackText };
-}
-
-function describeSvsTurnCompletion(payload: unknown) {
-  const tools = asRecord(payload).tools;
-  const toolCount = Array.isArray(tools) ? tools.length : 0;
-  return toolCount > 0
-    ? `SVS runtime · ${toolCount} tool${toolCount === 1 ? "" : "s"} used`
-    : "SVS runtime";
 }
 
 function describePermissionRequest(payload: Record<string, unknown>) {
@@ -756,15 +741,13 @@ export function processTranscriptEvent(
       event.turnId ?? event.seq,
       extractTriggeringEventIds(event.payload),
     );
-    const svsStart = isSvsObserverPayload(event.payload)
-      ? svsTurnLabel(event.payload, "Working", "SVS runtime")
-      : null;
+    const started = svsTurnStartLabel(event.payload);
     upsertTextItem(
       d,
       `turn:${ch}:${event.turnId ?? event.seq}`,
       "lifecycle",
-      svsStart?.title ?? "Turn started",
-      svsStart?.text ?? describeTurnStarted(event.payload),
+      started.title,
+      started.text,
       event.timestamp,
       ctx,
       event.kind,
@@ -773,11 +756,7 @@ export function processTranscriptEvent(
     event.kind === "turn_completed" &&
     isSvsObserverPayload(event.payload)
   ) {
-    const completed = svsTurnLabel(
-      event.payload,
-      "Response completed",
-      describeSvsTurnCompletion(event.payload),
-    );
+    const completed = svsTurnCompletedLabel(event.payload);
     upsertTextItem(
       d,
       `turn-completed:${ch}:${event.turnId ?? event.seq}`,

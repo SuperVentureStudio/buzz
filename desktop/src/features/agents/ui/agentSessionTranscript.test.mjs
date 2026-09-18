@@ -75,32 +75,51 @@ test("buildTranscript shows the message an SVS turn is on, its steps, and how lo
     {
       ...baseEvent,
       kind: "turn_started",
-      payload: { source: "svs", title: "Working", text: 'on "What\'s today\'s rundown?"' },
+      payload: {
+        source: "svs",
+        title: "Working",
+        text: "on \"What's today's rundown?\"",
+      },
     },
     {
       ...baseEvent,
       seq: 2,
       kind: "acp_read",
-      payload: { source: "svs", type: "svs_step_1", title: "Reading", text: "today's briefing" },
+      payload: {
+        source: "svs",
+        type: "svs_step_1",
+        title: "Reading",
+        text: "today's briefing",
+      },
     },
     {
       ...baseEvent,
       seq: 3,
       kind: "acp_read",
-      payload: { source: "svs", type: "svs_step_2", title: "Reading", text: "memory" },
+      payload: {
+        source: "svs",
+        type: "svs_step_2",
+        title: "Reading",
+        text: "memory",
+      },
     },
     {
       ...baseEvent,
       seq: 4,
       kind: "turn_completed",
-      payload: { source: "svs", state: "answered", title: "Answered in 20 s", text: "thinking 15 s, tools 2 s" },
+      payload: {
+        source: "svs",
+        state: "answered",
+        title: "Answered in 20 s",
+        text: "thinking 15 s, tools 2 s",
+      },
     },
   ]);
 
   assert.deepEqual(
     transcript.map((item) => [item.title, item.text]),
     [
-      ["Working", 'on "What\'s today\'s rundown?"'],
+      ["Working", "on \"What's today's rundown?\""],
       ["Reading", "today's briefing"],
       ["Reading", "memory"],
       ["Answered in 20 s", "thinking 15 s, tools 2 s"],

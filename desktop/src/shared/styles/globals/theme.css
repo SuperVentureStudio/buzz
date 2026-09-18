@@ -907,9 +907,7 @@
  * their normal solid surfaces. */
 :root[data-glass-background]
   [data-buzz-content-surface]:not([data-buzz-content-unframed]) {
-  background-color: hsl(
-    var(--background) / var(--glass-content-opacity, 58%)
-  );
+  background-color: hsl(var(--background) / var(--glass-content-opacity, 58%));
   backdrop-filter: blur(24px) saturate(1.08);
 }
 

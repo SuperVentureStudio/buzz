@@ -88,7 +88,9 @@ export function ProfileAvatarWithStatus({
       badge={
         hasBadge ? (
           <span
-            aria-label={svsManaged ? "Managed by SVS" : (statusLabel ?? undefined)}
+            aria-label={
+              svsManaged ? "Managed by SVS" : (statusLabel ?? undefined)
+            }
             className="flex h-full w-full items-center justify-center rounded-full"
             data-testid={statusTestId}
             role="img"
