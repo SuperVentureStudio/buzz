@@ -43,9 +43,34 @@ brew install rust
 corepack enable
 ```
 
+`pnpm` must be a real name on `PATH`, not only reachable as `corepack pnpm`.
+Tauri's `beforeBuildCommand` runs `pnpm build` in a child shell, so a session
+that only ever calls `corepack pnpm` fails the build in seconds with
+`sh: pnpm: command not found`. Without a global `corepack enable`, put the
+shims somewhere temporary and prepend that directory:
+
+```bash
+corepack enable --install-directory /tmp/pnpm-bin
+export PATH="/tmp/pnpm-bin:$PATH"
+```
+
 The build guard in `desktop/scripts/tauri-command.mjs` rejects missing, empty,
 or non-executable macOS sidecars. Keep the real `*-aarch64-apple-darwin`
 sidecars in `desktop/src-tauri/binaries/`; do not package CI placeholder files.
+
+The sidecars are separate binaries, so a desktop build does not refresh them.
+After an upstream merge, rebuild and recopy them, or the app ships the old
+`buzz-acp`, `buzz-agent` and `buzz` CLI against new desktop code:
+
+```bash
+cargo build --release -p buzz-acp -p buzz-agent -p buzz-backend-kubernetes \
+  -p buzz-dev-mcp -p buzz-cli -p git-credential-nostr
+TARGET=aarch64-apple-darwin
+for bin in buzz buzz-acp buzz-agent buzz-backend-kubernetes buzz-dev-mcp git-credential-nostr; do
+  cp "target/release/$bin" "desktop/src-tauri/binaries/${bin}-${TARGET}"
+  chmod +x "desktop/src-tauri/binaries/${bin}-${TARGET}"
+done
+```
 
 The source mark is `desktop/src-tauri/icons/svs-source.png`. Regenerate the
 macOS icon set from that mark before changing any icon sizes. Build the branded
