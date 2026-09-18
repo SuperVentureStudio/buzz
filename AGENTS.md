@@ -1,5 +1,12 @@
 # AGENTS.md — AI Agent Contributor Guide
 
+> **This checkout is the SVS fork.** SVS work lives only on the `svs` branch;
+> `main` mirrors Block's `main`. Read [docs/svs-fork.md](docs/svs-fork.md)
+> before changing desktop code, theming, forum or observer surfaces, updating
+> from upstream, or building the app — it owns the SVS build, signing and
+> install loop and the traps this fork has already paid for. Everything below
+> is upstream's guide and still applies.
+
 This guide is for AI agents contributing to the Buzz codebase. It covers
 agent-specific context and conventions. For general contributor info (setup,
 code style, PR process, architecture), see [CONTRIBUTING.md](CONTRIBUTING.md).

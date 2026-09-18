@@ -4,6 +4,14 @@
 Keeping the branches separate makes upstream updates reviewable and avoids
 mixing SVS branding with upstream history.
 
+`AGENTS.md` (and its `CLAUDE.md` symlink) is upstream's file with one SVS
+banner added at the top, pointing here. It is the only SVS edit to that file;
+keep it through a rebase conflict rather than dropping it, or this document
+stops being discoverable.
+
+What the fork carries is the branch, not a list in a document. Read it with
+`git log --oneline upstream/main..svs`.
+
 ## Update from upstream
 
 From the repository root, first ensure the working tree is clean, then run:
@@ -20,6 +28,25 @@ git push --force-with-lease origin svs
 
 Resolve and test any rebase conflict on `svs`; never merge `svs` back into
 `main`.
+
+Before pushing `svs`, prove the replay kept the fork intact. The feature diff
+against the new base must match the diff against the old one, and the repo's
+own gates must pass:
+
+```bash
+git diff <old-base>..<pre-rebase-tip> > /tmp/before.diff
+git diff <new-base>..svs > /tmp/after.diff   # same size; only line offsets move
+cd desktop && pnpm typecheck && pnpm test && pnpm check && node ./scripts/check-file-sizes.mjs
+cd .. && cargo check -p buzz-cli -p buzz-sdk && (cd desktop/src-tauri && cargo check)
+```
+
+Tag the pre-rebase tip first, so a bad replay is one `git reset` away. The
+file-size ratchet measures against `merge-base origin/main HEAD`, so pushing
+`main` moves the base a fork-grown file is judged by.
+
+Pushing does not change the installed app. To put the merge in front of
+Faisal, rebuild the sidecars and the replacement bundle, then install, both
+below.
 
 ## SVS desktop builds
 
@@ -250,7 +277,11 @@ the cyan marker describes SVS ownership and remains visible while no local
 Add `env_vars.SVS_ACTOR_ID` (for example `actor:maya`) to give the profile an
 "SVS profile · Open in SVS" row that opens the agent's page in the loopback
 SVS web app (`http://localhost:5173/team/agents/<id>`). Without it, no link is
-shown. The observer feed labels SVS turns "Working" rather than naming an
+shown. A turn row is named by the sender, not by the desktop:
+`svsTurnLabels.ts` reads `title` and `text` off any payload whose `source` is
+`"svs"`, so SVS says which message it is working on and how long the answer
+took. A record without them falls back to Working / Response completed, and a
+non-SVS payload keeps upstream's own turn description. Nothing here names an
 agent, so a second SVS-managed agent is never shown as Maya.
 
 Buzz is the conversation console; boards, dashboards and the full agent
